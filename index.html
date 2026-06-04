@@ -403,6 +403,7 @@
         document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
         document.querySelector(`.nav-btn[data-target="${viewId}"]`).classList.add('active');
         if(viewId === 'view-shop') renderShopList('buy');
+        if(viewId === 'view-quest') refreshQuestBoard();
     }
 
     function generateMathProblem(dungeon) {
@@ -893,7 +894,11 @@
     function completeQuest() { const q = player.activeQuest; player.gold += q.gold; player.exp += q.exp; showMsg(`퀘스트 완료!\n${q.gold} 골드, ${q.exp} 경험치`); player.activeQuest = null; checkLevelUp(); updateStats(); refreshQuestBoard(); }
     function updateQuestProgress(type, target) {
         if (!player.activeQuest) return; const q = player.activeQuest;
-        if (q.type === type && q.target === target && q.currentCount < q.count) { q.currentCount++; if (q.currentCount >= q.count) showMsg(`[퀘스트 완료] ${q.title}\n마을로 돌아가 보상을 받으세요!`); }
+        if (q.type === type && q.target === target && q.currentCount < q.count) { 
+            q.currentCount++; 
+            refreshQuestBoard(); 
+            if (q.currentCount >= q.count) showMsg(`[퀘스트 완료] ${q.title}\n마을로 돌아가 보상을 받으세요!`); 
+        }
     }
 
     function renderInventory() {
