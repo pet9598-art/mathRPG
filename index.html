@@ -20,7 +20,7 @@
         ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: #111; } ::-webkit-scrollbar-thumb { background: #555; }
         :root { --hp-red: #d32f2f; --mp-blue: #1976d2; --exp-green: #388e3c; }
         .text-shadow { text-shadow: 2px 2px 0px #000; }
-        #map-lines { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; }
+        #map-lines { position: absolute; top: 0; left: 0; width: 100%; pointer-events: none; z-index: 0; }
         .item-slot { position: relative; background-color: #000; border: 1px solid #444; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; cursor: pointer; }
         .item-slot:hover { border-color: #888; background-color: #222; }
         .item-count { position: absolute; bottom: 0; right: 2px; font-size: 0.6rem; font-family: sans-serif; font-weight: bold; color: white; text-shadow: 1px 1px 0 #000; }
@@ -32,7 +32,7 @@
 
 <div id="game-container">
     <!-- Header: Status -->
-    <div class="pixel-border m-2 p-2 bg-[#222]">
+    <div class="pixel-border m-2 p-2 bg-[#222] shrink-0 z-10">
         <div class="flex justify-between items-end mb-2 px-1">
             <div class="relative text-center w-16">
                 <div class="text-[0.6rem] mb-1 text-gray-300" style="font-family: 'Press Start 2P';">LEVEL</div>
@@ -58,22 +58,24 @@
     </div>
 
     <!-- Main Content Area -->
-    <div id="main-content" class="flex-1 overflow-y-auto relative p-2">
+    <div id="main-content" class="flex-1 overflow-hidden relative p-2">
         
         <!-- View: Quest & Town -->
-        <div id="view-quest" class="h-full flex flex-col hidden">
+        <div id="view-quest" class="h-full flex flex-col hidden overflow-y-auto">
             <div class="pixel-border p-4 mb-2 bg-[#1a1a1d] flex-shrink-0" id="quest-board">
                 <h3 class="text-lg text-yellow-400 mb-2 border-b border-gray-700 pb-1">📜 퀘스트 게시판</h3>
                 <div id="quest-content" class="text-sm text-gray-300 min-h-[80px] flex flex-col justify-center"></div>
             </div>
             <div class="pixel-border p-4 mb-2 bg-[#1a1a1d] flex-shrink-0">
                 <h3 class="text-lg text-yellow-400 mb-2 border-b border-gray-700 pb-1">🏡 마을 여관</h3>
-                <p class="text-gray-300 text-sm mb-4">안전한 마을입니다. 골드를 지불하고 체력과 마나를 완벽히 회복할 수 있습니다.</p>
+                <p class="text-gray-300 text-xs mb-3">안전한 마을입니다. 50G를 지불하고 체력과 마나를 완벽히 회복합니다.</p>
                 <button class="pixel-btn w-full py-2 bg-green-900" onclick="restInTown()">휴식하기 (50G)</button>
             </div>
-            <div class="pixel-border p-4 flex-1 bg-[#1a1a1d] flex flex-col items-center justify-center">
-                <h2 class="text-2xl text-blue-400 text-shadow mb-4">수학의 성채</h2>
-                <p class="text-center text-sm text-gray-400">던전에 진입하여 수학의 진리를 탐구하세요.</p>
+            <div class="pixel-border p-3 flex-1 bg-[#1a1a1d] flex flex-col">
+                <h2 class="text-lg text-blue-400 text-shadow mb-2 border-b border-gray-700 w-full text-center pb-1">수학의 성채 (정복 업적)</h2>
+                <div id="achievements-list" class="w-full text-xs text-gray-300 flex flex-col gap-2 overflow-y-auto pt-1 px-1">
+                    <!-- Achievements will be populated here -->
+                </div>
             </div>
         </div>
 
@@ -81,7 +83,7 @@
         <div id="view-battle" class="h-full flex flex-col hidden">
             <!-- 던전 선택 화면 -->
             <div id="dungeon-select" class="h-full flex flex-col items-center overflow-y-auto space-y-3 pb-4">
-                <h2 class="text-xl text-yellow-400 text-shadow mb-2 mt-2">어디로 모험을 떠날까요?</h2>
+                <h2 class="text-xl text-yellow-400 text-shadow mb-2 mt-2 shrink-0">어디로 모험을 떠날까요?</h2>
                 <button class="pixel-btn w-[90%] py-3 text-base bg-green-900 flex flex-col items-center shrink-0" onclick="enterDungeon('초보자의 숲')"><span>🌲 초보자의 숲 <span class="text-xs text-gray-300">(Lv.1~3)</span></span><span class="text-[0.65rem] text-yellow-300 mt-1">[단원: 덧셈과 뺄셈]</span></button>
                 <button class="pixel-btn w-[90%] py-3 text-base bg-gray-700 flex flex-col items-center shrink-0" onclick="enterDungeon('고블린 동굴')"><span>🦇 고블린 동굴 <span class="text-xs text-gray-300">(Lv.4~6)</span></span><span class="text-[0.65rem] text-yellow-300 mt-1">[단원: 곱셈과 나눗셈]</span></button>
                 <button class="pixel-btn w-[90%] py-3 text-base bg-orange-900 flex flex-col items-center shrink-0" onclick="enterDungeon('오크 부락')"><span>🌋 오크 부락 <span class="text-xs text-gray-300">(Lv.7~9)</span></span><span class="text-[0.65rem] text-yellow-300 mt-1">[단원: 자연수의 혼합계산]</span></button>
@@ -92,13 +94,14 @@
 
             <!-- 던전 맵 화면 -->
             <div id="dungeon-map-view" class="h-full flex flex-col hidden relative bg-[#0a0a0c]">
-                <div class="p-2 text-center text-gray-400 border-b border-gray-800 bg-[#111] z-20 shadow-md flex justify-between px-4">
+                <div class="p-2 text-center text-gray-400 border-b border-gray-800 bg-[#111] z-20 shadow-md flex justify-between items-center px-4 shrink-0">
                     <h3 id="map-dungeon-name" class="text-lg text-yellow-500 font-bold">던전 이름</h3>
-                    <button class="text-xs bg-red-900 px-2 py-1 rounded text-white border border-red-700" onclick="requestFlee()">도망치기</button>
+                    <button class="text-xs bg-red-900 px-3 py-1 rounded text-white border border-red-700" onclick="requestFlee()">도망치기</button>
                 </div>
-                <div class="flex-1 relative overflow-y-auto p-4 flex flex-col justify-end" id="map-scroll-area">
-                    <svg id="map-lines"></svg>
-                    <div id="map-nodes" class="flex flex-col gap-10 w-full z-10 pb-4 pt-10 relative"></div>
+                <!-- 스크롤 영역 (flex-col 블록 속성 사용) -->
+                <div class="flex-1 relative overflow-y-auto overflow-x-hidden p-4 block" id="map-scroll-area">
+                    <svg id="map-lines" class="absolute top-0 left-0 w-full pointer-events-none z-0"></svg>
+                    <div id="map-nodes" class="flex flex-col gap-10 w-full z-10 pb-8 pt-10 relative"></div>
                 </div>
             </div>
 
@@ -107,7 +110,7 @@
                 <div class="flex-1 pixel-border m-2 flex flex-col items-center justify-center p-4 bg-[#111]">
                     <h2 id="event-title" class="text-2xl text-yellow-400 mb-6 text-shadow">이벤트</h2>
                     <div class="text-6xl mb-6 animate-bounce" id="event-icon">🎁</div>
-                    <p id="event-desc" class="text-center text-gray-300 text-base mb-8 leading-relaxed">설명 텍스트</p>
+                    <p id="event-desc" class="text-center text-gray-300 text-sm mb-8 leading-relaxed whitespace-pre-wrap">설명 텍스트</p>
                     <div id="event-buttons" class="w-full flex flex-col gap-3 items-center">
                         <button class="pixel-btn w-3/4 py-3 text-lg" id="event-action-btn" onclick="completeNode()">진행</button>
                     </div>
@@ -126,9 +129,9 @@
                     </div>
                 </div>
                 
-                <div class="h-28 pixel-border p-2 overflow-y-auto text-sm text-gray-300 bg-black flex flex-col gap-1" id="battle-log"></div>
+                <div class="h-24 pixel-border p-2 overflow-y-auto text-sm text-gray-300 bg-black flex flex-col gap-1" id="battle-log"></div>
                 
-                <div class="grid grid-cols-2 gap-2 mt-2">
+                <div class="grid grid-cols-2 gap-2 mt-2 shrink-0">
                     <button class="pixel-btn py-2 text-sm bg-red-900" onclick="attack()">⚔️ 타격</button>
                     <button class="pixel-btn py-2 text-sm bg-purple-900" onclick="openBattleSkill()">✨ 진리(마법)<span class="text-[0.6rem] block">MP 소모</span></button>
                     <button class="pixel-btn py-2 text-sm bg-green-800" onclick="openBattleBag()">🎒 가방<span class="text-[0.6rem] block">포션 사용</span></button>
@@ -139,7 +142,7 @@
 
         <!-- View: Skills -->
         <div id="view-skills" class="h-full flex flex-col hidden">
-            <div class="pixel-border p-3 mb-2 bg-[#2c2c2e] flex gap-4 h-32">
+            <div class="pixel-border p-3 mb-2 bg-[#2c2c2e] flex gap-4 h-32 shrink-0">
                 <div class="w-20 flex-shrink-0 flex items-center justify-center bg-[#1a1a1c] border border-gray-700 text-4xl" id="detail-icon">?</div>
                 <div class="flex-1 flex flex-col justify-between">
                     <div>
@@ -147,7 +150,7 @@
                             <h3 class="text-lg text-white" id="detail-name">스킬 선택</h3>
                             <span class="text-xs" id="detail-type"></span>
                         </div>
-                        <p class="text-xs text-gray-400 mt-1 leading-tight" id="detail-desc">목록에서 스킬을 선택하세요.</p>
+                        <p class="text-[0.65rem] text-gray-400 mt-1 leading-tight" id="detail-desc">목록에서 스킬을 선택하세요.</p>
                     </div>
                     <button class="pixel-btn py-1 text-sm bg-yellow-600 disabled:opacity-50" id="btn-buy" onclick="buySkill()" disabled>
                         <span id="detail-cost">0</span> 🪙 배우기
@@ -160,8 +163,8 @@
         <!-- View: Inventory -->
         <div id="view-inventory" class="h-full flex flex-col hidden">
             <div class="pixel-border p-2 mb-2 bg-[#1a1a1d]">
-                <h3 class="text-sm text-yellow-400 mb-2">장착 중인 장비</h3>
-                <div class="flex gap-4 justify-center">
+                <h3 class="text-sm text-yellow-400 mb-2 text-center">장착 중인 장비</h3>
+                <div class="flex gap-8 justify-center">
                     <div class="flex flex-col items-center">
                         <div class="text-[0.6rem] text-gray-400 mb-1">무기</div>
                         <div id="slot-weapon" class="item-slot w-14 h-14" onclick="openItemAction('equip', 'weapon')"></div>
@@ -174,14 +177,14 @@
             </div>
             <div class="pixel-border p-2 mb-2 bg-[#1a1a1d] flex-shrink-0">
                 <div class="flex justify-between items-center mb-1">
-                    <h3 class="text-sm text-green-400">가방 (전투 중 사용가능)</h3>
+                    <h3 class="text-xs text-green-400">가방 (전투 중 사용가능)</h3>
                     <span id="bag-count" class="text-xs text-gray-400">0/12</span>
                 </div>
-                <div id="inv-bag" class="grid grid-cols-6 gap-1 h-24 overflow-y-auto bg-black p-1"></div>
+                <div id="inv-bag" class="grid grid-cols-6 gap-1 h-20 overflow-y-auto bg-black p-1"></div>
             </div>
             <div class="pixel-border p-2 flex-1 bg-[#1a1a1d] flex flex-col">
                 <div class="flex justify-between items-center mb-1">
-                    <h3 class="text-sm text-blue-400">창고 (마을 전용)</h3>
+                    <h3 class="text-xs text-blue-400">창고 (마을 전용)</h3>
                     <span id="stash-count" class="text-xs text-gray-400">0/24</span>
                 </div>
                 <div id="inv-stash" class="grid grid-cols-6 gap-1 flex-1 overflow-y-auto bg-black p-1 content-start"></div>
@@ -190,12 +193,12 @@
 
         <!-- View: Shop -->
         <div id="view-shop" class="h-full flex flex-col hidden">
-            <div class="flex gap-2 mb-2">
-                <button id="tab-buy" class="pixel-btn flex-1 py-2 bg-blue-900 border-yellow-500" onclick="renderShopList('buy')">구매 (장비/물약)</button>
-                <button id="tab-sell" class="pixel-btn flex-1 py-2 bg-[#333]" onclick="renderShopList('sell')">판매 (전리품)</button>
+            <div class="flex gap-2 mb-2 shrink-0">
+                <button id="tab-buy" class="pixel-btn flex-1 py-2 text-sm bg-blue-900 border-yellow-500" onclick="renderShopList('buy')">구매 (장비/물약)</button>
+                <button id="tab-sell" class="pixel-btn flex-1 py-2 text-sm bg-[#333]" onclick="renderShopList('sell')">판매 (전리품)</button>
             </div>
-            <div class="pixel-border p-2 flex-1 bg-[#1a1a1d] flex flex-col">
-                <div class="flex justify-between items-center mb-2 border-b border-gray-700 pb-1">
+            <div class="pixel-border p-2 flex-1 bg-[#1a1a1d] flex flex-col overflow-hidden">
+                <div class="flex justify-between items-center mb-2 border-b border-gray-700 pb-1 shrink-0">
                     <span class="text-sm text-gray-300" id="shop-title">판매 물품</span>
                 </div>
                 <div id="shop-list" class="flex-1 overflow-y-auto flex flex-col gap-2 pr-1"></div>
@@ -214,7 +217,7 @@
     <div id="confirm-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-[60] p-4">
         <div class="pixel-border bg-[#1a1a1d] p-6 max-w-sm w-full text-center shadow-[0_0_20px_rgba(255,0,0,0.4)]">
             <h3 class="text-red-500 text-lg mb-2">⚠️ 경고</h3>
-            <p id="confirm-text" class="text-sm text-gray-300 mb-6">던전 탐험 중입니다.<br>도망치시겠습니까?<br><span class="text-red-400 text-xs">(경험치 상실, 획득한 골드는 유지)</span></p>
+            <p id="confirm-text" class="text-sm text-gray-300 mb-6">던전 탐험 중입니다.<br>도망치시겠습니까?<br><span class="text-red-400 text-xs">(얻은 경험치 상실, 획득한 골드 유지)</span></p>
             <div class="flex justify-center gap-4">
                 <button class="pixel-btn px-6 py-2 bg-red-800" onclick="executeFlee()">도망치기</button>
                 <button class="pixel-btn px-6 py-2 bg-gray-600" onclick="cancelSwitch()">계속 탐험</button>
@@ -278,11 +281,15 @@
     let player = {
         level: 1, exp: 0, maxExp: 100, hp: 100, maxHp: 100, mp: 50, maxMp: 50,
         baseAtk: 15, baseDef: 5, gold: 500, skills: [],
-        inventory: { equip: { weapon: null, armor: null }, bag: [], stash: [] }, activeQuest: null
+        inventory: { equip: { weapon: null, armor: null }, bag: [], stash: [] }, 
+        activeQuest: null,
+        achievements: { // 업적 추가
+            '초보자의 숲': 0, '고블린 동굴': 0, '오크 부락': 0, '악마기사단': 0, '뒤틀린 슬라임 부족': 0, '마왕성': 0
+        }
     };
 
     const itemDB = {
-        // 상점 무기 (레벨 제한 O)
+        // 상점 무기
         'w1': { id: 'w1', name: '낡은 검', type: 'weapon', atk: 5, def: 0, price: 150, icon: '🗡️', reqLevel: 1, desc: '가장 기본적인 검. (공격력 +5)' },
         'w2': { id: 'w2', name: '초보자의 룬 창', type: 'weapon', atk: 8, def: 0, price: 500, icon: '🔱', reqLevel: 3, special: { type: 'crit', chance: 0.25, mult: 1.5 }, desc: '크리티컬: 25% 확률로 1.5배 피해. (공격력 +8)' },
         'w3': { id: 'w3', name: '톱날 단검', type: 'weapon', atk: 12, def: 0, price: 1200, icon: '🔪', reqLevel: 5, special: { type: 'bleed', chance: 0.3, dmg: 5, turns: 3 }, desc: '출혈: 30% 확률로 매 턴 5의 지속 피해. (공격력 +12)' },
@@ -295,8 +302,8 @@
         'd_w3': { id: 'd_w3', name: '마검 [바알제붑]', type: 'weapon', atk: 60, def: 0, price: 4000, icon: '🗡️', isDrop: true, special: { type: 'crit', chance: 0.4, mult: 2.0 }, desc: '[파밍/레어] 40% 확률로 2배 크리티컬. (공+60)' },
         'd_w4': { id: 'd_w4', name: '기하학 큐브 코어', type: 'weapon', atk: 85, def: 0, price: 8000, icon: '🧊', isDrop: true, special: { type: 'paralyze', chance: 0.35 }, desc: '[파밍] 35% 확률로 적 마비. (공+85)' },
 
-        // 보스 드랍 무기 (상점 비활성화 표시)
-        'b_w1': { id: 'b_w1', name: '슬로우 소드', type: 'weapon', atk: 10, def: 0, price: 0, icon: '🗡️', isBossDrop: true, special: { type: 'paralyze', chance: 0.4 }, desc: '[초보자의 숲 보스] 40% 확률로 1턴 스턴. (공+10)' },
+        // 보스 전용 장비 및 드랍템
+        'b_w1': { id: 'b_w1', name: '슬로우 소드', type: 'weapon', atk: 10, def: 0, price: 0, icon: '🗡️', isBossDrop: true, special: { type: 'paralyze', chance: 0.4 }, desc: '[초보자의 숲 보스] 40% 확률로 1턴 스턴(마비). (공+10)' },
         'b_m1': { id: 'b_m1', name: '대왕 슬라임 조각', type: 'material', price: 150, icon: '🦠', desc: '대왕 슬라임의 신체 일부. 상점에 판매할 수 있다.' },
         'b_w2': { id: 'b_w2', name: '고블린 족장의 창', type: 'weapon', atk: 18, def: 0, price: 0, icon: '🔱', isBossDrop: true, special: { type: 'anti_goblin' }, desc: '[고블린 동굴 보스] 고블린 몬스터 무조건 즉사. (공+18)' },
         'b_m2': { id: 'b_m2', name: '고블린 족장의 귀', type: 'material', price: 250, icon: '👂', desc: '고블린 족장의 증표.' },
@@ -312,7 +319,7 @@
         'a2': { id: 'a2', name: '사슬 갑옷', type: 'armor', atk: 0, def: 8, price: 600, icon: '🛡️', reqLevel: 4, desc: '튼튼한 갑옷. (방어력 +8)' },
         'a3': { id: 'a3', name: '강철 판금 갑옷', type: 'armor', atk: 0, def: 18, price: 2000, icon: '🦾', reqLevel: 8, desc: '강철로 만든 튼튼한 판금 갑옷. (방어력 +18)' },
 
-        // 소모품
+        // 소모품 및 재료
         'p1': { id: 'p1', name: '초보자 포션', type: 'consumable', healHp: 50, healMp: 0, price: 50, icon: '🧪', reqLevel: 1, desc: '체력을 50 회복합니다.' },
         'p2': { id: 'p2', name: '마나 물약', type: 'consumable', healHp: 0, healMp: 30, price: 80, icon: '🏺', reqLevel: 1, desc: '마나를 30 회복합니다.' },
         'k1': { id: 'k1', name: '황금 열쇠', type: 'material', price: 150, icon: '🔑', reqLevel: 1, desc: '보물 상자를 안전하게 엽니다. (일회용)' },
@@ -326,45 +333,45 @@
 
     const skillDB = [
         { id: 's1', name: "철벽 정리", type: "패시브", color: "text-blue-400", desc: "영구적으로 기본 방어력이 5 증가합니다.", cost: 1000, icon: "🛡️", reqLevel: 1, effect: () => { player.baseDef += 5; } },
-        { id: 's2', name: "바람의 함수", type: "마법(액티브)", color: "text-yellow-400", desc: "MP 20 소비. 적에게 강력한 마법 공격을 날립니다.", cost: 2000, icon: "💨", reqLevel: 5, effect: () => {} },
-        { id: 's3', name: "피타고라스 일격", type: "마법(액티브)", color: "text-red-400", desc: "MP 40 소비. 적의 방어력을 무시하는 초강력 단일 마법 피해.", cost: 5000, icon: "📐", reqLevel: 10, effect: () => {} },
-        { id: 's4', name: "방정식의 폭주", type: "마법(액티브)", color: "text-purple-400", desc: "MP 30 소비. 마력이 깃든 3연속 마법 타격을 가합니다.", cost: 8000, icon: "🔢", reqLevel: 12, effect: () => {} },
-        { id: 's5', name: "절대값 쉴드", type: "마법(액티브)", color: "text-green-400", desc: "MP 25 소비. 즉시 체력을 100 회복하고 3턴간 방어력이 30 증가합니다.", cost: 12000, icon: "🔰", reqLevel: 15, effect: () => {} },
-        { id: 's6', name: "운석의 기하학", type: "마법(액티브)", color: "text-red-500", desc: "MP 80 소비. 거대한 메테오를 소환하여 적 방어를 무시하는 파멸적 피해(공격력x5).", cost: 30000, icon: "☄️", reqLevel: 18, effect: () => {} }
+        { id: 's2', name: "바람의 함수", type: "마법(액티브)", color: "text-yellow-400", desc: "MP 20 소비. 강력한 단일 마법(공격력x2.5).", cost: 2000, icon: "💨", reqLevel: 5, effect: () => {} },
+        { id: 's3', name: "피타고라스 일격", type: "마법(액티브)", color: "text-red-400", desc: "MP 40 소비. 적의 방어를 무시하는 초강력 마법 피해(공격력x3).", cost: 5000, icon: "📐", reqLevel: 10, effect: () => {} },
+        { id: 's4', name: "방정식의 폭주", type: "마법(액티브)", color: "text-purple-400", desc: "MP 30 소비. 마력이 깃든 3연속 마법 타격.", cost: 8000, icon: "🔢", reqLevel: 12, effect: () => {} },
+        { id: 's5', name: "절대값 쉴드", type: "마법(액티브)", color: "text-green-400", desc: "MP 25 소비. 즉시 체력 100 회복 & 3턴간 방어력 +30.", cost: 12000, icon: "🔰", reqLevel: 15, effect: () => {} },
+        { id: 's6', name: "운석의 기하학", type: "마법(액티브)", color: "text-red-500", desc: "MP 80 소비. 거대한 메테오를 소환! 방어 무시 파멸적 피해(공격력x5).", cost: 30000, icon: "☄️", reqLevel: 18, effect: () => {} }
     ];
 
     const monsters = [
-        { name: "숫자 슬라임", level: 1, hp: 30, atk: 8, def: 2, exp: 20, gold: 15, sprite: '💧', drop: 'm1', dungeon: '초보자의 숲' },
-        { name: "숲 늑대", level: 2, hp: 45, atk: 12, def: 3, exp: 30, gold: 20, sprite: '🐺', drop: null, dungeon: '초보자의 숲' },
-        { name: "동굴 박쥐", level: 4, hp: 80, atk: 18, def: 5, exp: 55, gold: 35, sprite: '🦇', drop: null, dungeon: '고블린 동굴' },
-        { name: "연산 고블린", level: 5, hp: 110, atk: 22, def: 8, exp: 70, gold: 45, sprite: '👺', drop: 'm2', dungeon: '고블린 동굴' },
-        { name: "오크 전사", level: 7, hp: 180, atk: 35, def: 15, exp: 120, gold: 70, sprite: '👹', drop: 'm3', dungeon: '오크 부락' },
-        { name: "오크 주술사", level: 8, hp: 150, atk: 45, def: 10, exp: 140, gold: 80, sprite: '🧙‍♂️', drop: 'm3', dungeon: '오크 부락' },
-        { name: "타락한 기사", level: 10, hp: 300, atk: 55, def: 25, exp: 250, gold: 120, sprite: '🤺', drop: 'm4', dungeon: '악마기사단' },
+        { name: "숫자 슬라임", level: 1, hp: 30, atk: 8, def: 2, exp: 12, gold: 15, sprite: '💧', drop: 'm1', dungeon: '초보자의 숲' },
+        { name: "숲 늑대", level: 2, hp: 45, atk: 12, def: 3, exp: 18, gold: 20, sprite: '🐺', drop: null, dungeon: '초보자의 숲' },
+        { name: "동굴 박쥐", level: 4, hp: 80, atk: 18, def: 5, exp: 35, gold: 35, sprite: '🦇', drop: null, dungeon: '고블린 동굴' },
+        { name: "연산 고블린", level: 5, hp: 110, atk: 22, def: 8, exp: 45, gold: 45, sprite: '👺', drop: 'm2', dungeon: '고블린 동굴' },
+        { name: "오크 전사", level: 7, hp: 180, atk: 35, def: 15, exp: 75, gold: 70, sprite: '👹', drop: 'm3', dungeon: '오크 부락' },
+        { name: "오크 주술사", level: 8, hp: 150, atk: 45, def: 10, exp: 85, gold: 80, sprite: '🧙‍♂️', drop: 'm3', dungeon: '오크 부락' },
+        { name: "타락한 기사", level: 10, hp: 300, atk: 55, def: 25, exp: 150, gold: 120, sprite: '🤺', drop: 'm4', dungeon: '악마기사단' },
         // 4던전부터 물리 면역 몹 추가
-        { name: "흑마법사", level: 12, hp: 200, atk: 80, def: 15, exp: 350, gold: 150, sprite: '🦹', drop: 'm4', dungeon: '악마기사단', physicalImmune: true },
-        { name: "맹독 슬라임", level: 14, hp: 450, atk: 85, def: 35, exp: 450, gold: 200, sprite: '🤢', drop: 'm1', dungeon: '뒤틀린 슬라임 부족' },
-        { name: "큐브 슬라임", level: 16, hp: 400, atk: 100, def: 80, exp: 600, gold: 250, sprite: '🧊', drop: 'm1', dungeon: '뒤틀린 슬라임 부족', physicalImmune: true },
-        { name: "마왕의 호위무사", level: 19, hp: 800, atk: 150, def: 100, exp: 1200, gold: 400, sprite: '🥷', drop: null, dungeon: '마왕성', physicalImmune: true }
+        { name: "흑마법사", level: 12, hp: 200, atk: 80, def: 15, exp: 200, gold: 150, sprite: '🦹', drop: 'm4', dungeon: '악마기사단', physicalImmune: true },
+        { name: "맹독 슬라임", level: 14, hp: 450, atk: 85, def: 35, exp: 280, gold: 200, sprite: '🤢', drop: 'm1', dungeon: '뒤틀린 슬라임 부족' },
+        { name: "큐브 슬라임", level: 16, hp: 400, atk: 100, def: 80, exp: 350, gold: 250, sprite: '🧊', drop: 'm1', dungeon: '뒤틀린 슬라임 부족', physicalImmune: true },
+        { name: "마왕의 호위무사", level: 19, hp: 800, atk: 150, def: 100, exp: 700, gold: 400, sprite: '🥷', drop: null, dungeon: '마왕성', physicalImmune: true }
     ];
 
     const bosses = {
-        '초보자의 숲': { name: "대왕 슬라임", hp: 150, atk: 20, def: 5, exp: 150, gold: 100, sprite: '🦠' },
-        '고블린 동굴': { name: "고블린 족장", hp: 350, atk: 40, def: 15, exp: 350, gold: 200, sprite: '🧌' },
-        '오크 부락': { name: "오크 대족장", hp: 600, atk: 70, def: 30, exp: 700, gold: 400, sprite: '🦍' },
-        '악마기사단': { name: "죽음의 기사단장", hp: 1200, atk: 110, def: 50, exp: 1500, gold: 800, sprite: '🏇' },
-        '뒤틀린 슬라임 부족': { name: "기하학 슬라임 킹", hp: 2500, atk: 160, def: 80, exp: 3000, gold: 1500, sprite: '🌌' },
-        '마왕성': { name: "수학의 대마왕", hp: 6000, atk: 250, def: 100, exp: 8000, gold: 3000, sprite: '👿' } // 궁극기 보유
+        '초보자의 숲': { name: "대왕 슬라임", hp: 150, atk: 20, def: 5, exp: 90, gold: 100, sprite: '🦠' },
+        '고블린 동굴': { name: "고블린 족장", hp: 350, atk: 40, def: 15, exp: 200, gold: 200, sprite: '🧌' },
+        '오크 부락': { name: "오크 대족장", hp: 600, atk: 70, def: 30, exp: 400, gold: 400, sprite: '🦍' },
+        '악마기사단': { name: "죽음의 기사단장", hp: 1200, atk: 110, def: 50, exp: 900, gold: 800, sprite: '🏇' },
+        '뒤틀린 슬라임 부족': { name: "기하학 슬라임 킹", hp: 2500, atk: 160, def: 80, exp: 1800, gold: 1500, sprite: '🌌' },
+        '마왕성': { name: "수학의 대마왕", hp: 6000, atk: 250, def: 100, exp: 4500, gold: 3000, sprite: '👿' }
     };
 
     const questDB = [
-        { id: 1, type: 'kill', target: '숫자 슬라임', count: 3, gold: 50, exp: 20, title: "기초 정리", desc: "숫자 슬라임 3마리 처치", reqLevel: 1 },
-        { id: 2, type: 'clear', target: '초보자의 숲', count: 1, gold: 150, exp: 80, title: "숲의 정화", desc: "초보자의 숲 보스 처치", reqLevel: 2 },
-        { id: 3, type: 'kill', target: '연산 고블린', count: 2, gold: 100, exp: 60, title: "고블린의 위협", desc: "연산 고블린 2마리 처치", reqLevel: 4 },
-        { id: 4, type: 'kill', target: '오크 전사', count: 2, gold: 200, exp: 120, title: "오크 토벌대", desc: "오크 전사 2마리 처치", reqLevel: 7 },
-        { id: 5, type: 'clear', target: '악마기사단', count: 1, gold: 800, exp: 400, title: "기사단의 몰락", desc: "기사단장 처치", reqLevel: 10 },
-        { id: 6, type: 'clear', target: '뒤틀린 슬라임 부족', count: 1, gold: 1200, exp: 800, title: "도형의 붕괴", desc: "기하학 슬라임 킹 처치", reqLevel: 14 },
-        { id: 7, type: 'clear', target: '마왕성', count: 1, gold: 2500, exp: 2000, title: "수학의 구원자", desc: "수학의 대마왕 처치", reqLevel: 19 }
+        { id: 1, type: 'kill', target: '숫자 슬라임', count: 3, gold: 30, exp: 15, title: "기초 정리", desc: "숫자 슬라임 3마리 처치", reqLevel: 1 },
+        { id: 2, type: 'clear', target: '초보자의 숲', count: 1, gold: 80, exp: 50, title: "숲의 정화", desc: "초보자의 숲 보스 처치", reqLevel: 2 },
+        { id: 3, type: 'kill', target: '연산 고블린', count: 2, gold: 60, exp: 40, title: "고블린의 위협", desc: "연산 고블린 2마리 처치", reqLevel: 4 },
+        { id: 4, type: 'kill', target: '오크 전사', count: 2, gold: 120, exp: 80, title: "오크 토벌대", desc: "오크 전사 2마리 처치", reqLevel: 7 },
+        { id: 5, type: 'clear', target: '악마기사단', count: 1, gold: 500, exp: 250, title: "기사단의 몰락", desc: "기사단장 처치", reqLevel: 10 },
+        { id: 6, type: 'clear', target: '뒤틀린 슬라임 부족', count: 1, gold: 700, exp: 500, title: "도형의 붕괴", desc: "기하학 슬라임 킹 처치", reqLevel: 14 },
+        { id: 7, type: 'clear', target: '마왕성', count: 1, gold: 1500, exp: 1200, title: "수학의 구원자", desc: "수학의 대마왕 처치", reqLevel: 19 }
     ];
 
     let currentMonster = null, isBattling = false, currentDungeon = null, currentMapData = null, currentNodeId = null, clearedNodes = [], isBossBattle = false;
@@ -385,6 +392,10 @@
     function logMessage(msg, colorClass = "text-gray-300") { const div = document.createElement('div'); div.className = colorClass; div.innerHTML = msg; els.log.appendChild(div); els.log.scrollTop = els.log.scrollHeight; }
     
     function updateStats() {
+        // 안전 가드: 레벨 및 경험치가 이상하게 설정되는 것 방지
+        if (player.level < 1) player.level = 1;
+        player.exp = Math.max(0, player.exp);
+        
         els.level.innerText = player.level; els.atk.innerText = getTotalAtk(); els.def.innerText = getTotalDef();
         els.hp.innerText = Math.max(0, Math.floor(player.hp)); els.mp.innerText = Math.max(0, Math.floor(player.mp));
         els.gold.innerText = player.gold.toLocaleString();
@@ -393,17 +404,36 @@
     }
 
     function requestSwitchView(viewId) {
-        if(currentDungeon && viewId !== 'view-battle') { pendingTargetView = viewId; document.getElementById('confirm-modal').classList.remove('hidden'); return; }
-        forceSwitchView(viewId);
+        try {
+            if(currentDungeon && viewId !== 'view-battle') { 
+                pendingTargetView = viewId; document.getElementById('confirm-modal').classList.remove('hidden'); return; 
+            }
+            forceSwitchView(viewId);
+        } catch (e) { console.error(e); } // 리셋 방지용 에러 캐치
     }
     
     function forceSwitchView(viewId) {
         document.querySelectorAll('#main-content > div[id^="view-"]').forEach(v => v.classList.add('hidden'));
         document.getElementById(viewId).classList.remove('hidden');
         document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
-        document.querySelector(`.nav-btn[data-target="${viewId}"]`).classList.add('active');
+        const targetBtn = document.querySelector(`.nav-btn[data-target="${viewId}"]`);
+        if(targetBtn) targetBtn.classList.add('active');
         if(viewId === 'view-shop') renderShopList('buy');
-        if(viewId === 'view-quest') refreshQuestBoard();
+        if(viewId === 'view-quest') { refreshQuestBoard(); updateAchievementsUI(); }
+    }
+
+    function updateAchievementsUI() {
+        const list = document.getElementById('achievements-list');
+        if (!list) return;
+        list.innerHTML = '';
+        const dList = ['초보자의 숲', '고블린 동굴', '오크 부락', '악마기사단', '뒤틀린 슬라임 부족', '마왕성'];
+        dList.forEach(d => {
+            const count = player.achievements[d] || 0;
+            const div = document.createElement('div');
+            div.className = "flex justify-between items-center border-b border-gray-800 pb-1";
+            div.innerHTML = `<span>${d}</span> <span class="${count > 0 ? 'text-yellow-400 font-bold' : 'text-gray-600'}">${count}회 정복</span>`;
+            list.appendChild(div);
+        });
     }
 
     function generateMathProblem(dungeon) {
@@ -467,32 +497,26 @@
         let floors = [];
         let links = [];
 
-        // 보스 방 (최상층)
         floors.push([{id: 'boss', type: 'boss'}]);
         let prevLayerIds = ['boss'];
 
-        // 중간 층 생성 (위에서 아래로 내려가며 생성)
         for (let i = floorsCount - 1; i >= 1; i--) {
             let currentLayer = [];
-            // 첫방과 끝방 직전은 1~2개로 좁혀지고, 중간은 2~3개로 맵이 넓어짐
             let width = (i === floorsCount - 1 || i === 1) ? (Math.random() > 0.5 ? 2 : 1) : Math.floor(Math.random() * 2) + 2;
             
             for (let w = 0; w < width; w++) {
                 const types = ['monster', 'monster', 'treasure', 'shrine', 'empty'];
-                // 몬스터 등장 확률 60%
                 let type = Math.random() < 0.6 ? 'monster' : types[Math.floor(Math.random() * types.length)];
                 let id = `f${i}_${w}`;
                 currentLayer.push({id: id, type: type});
             }
             floors.push(currentLayer);
 
-            // 현재 층(currentLayer)과 이전 층(prevLayerIds - 시각적으론 위쪽 층) 연결
             prevLayerIds.forEach(pId => {
                 let cId = currentLayer[Math.floor(Math.random() * currentLayer.length)].id;
-                links.push([cId, pId]); // 자식(아래) -> 부모(위) 방향
+                links.push([cId, pId]); 
             });
             
-            // 끊긴 노드가 없도록 보장 (모든 자식 노드가 하나 이상의 부모 노드를 향하도록)
             currentLayer.forEach(c => {
                 let hasLink = links.some(l => l[0] === c.id);
                 if (!hasLink) {
@@ -504,7 +528,6 @@
             prevLayerIds = currentLayer.map(c => c.id);
         }
 
-        // 시작 방 (최하층)
         floors.push([{id: 'start', type: 'start'}]);
         prevLayerIds.forEach(pId => {
             links.push(['start', pId]);
@@ -518,12 +541,12 @@
     function renderMap() {
         const container = document.getElementById('map-nodes'); container.innerHTML = '';
         [...currentMapData.floors].reverse().forEach((floor) => {
-            const rowDiv = document.createElement('div'); rowDiv.className = 'flex justify-center gap-12 w-full z-10';
+            const rowDiv = document.createElement('div'); rowDiv.className = 'flex justify-center gap-12 w-full z-10 shrink-0';
             floor.forEach(node => {
                 const nodeDiv = document.createElement('div'); nodeDiv.id = `node-${node.id}`;
                 const isCleared = clearedNodes.includes(node.id); const isCurrent = node.id === currentNodeId;
                 const isAvail = !isCleared && isAdjacentForward(currentNodeId, node.id);
-                let baseClass = 'w-14 h-14 flex items-center justify-center text-3xl rounded shadow-md transition-all border-2 ';
+                let baseClass = 'w-14 h-14 flex items-center justify-center text-3xl rounded shadow-md transition-all border-2 shrink-0 ';
                 
                 if (isCurrent) { baseClass += 'bg-blue-900 border-blue-400 scale-110 shadow-[0_0_20px_rgba(59,130,246,0.8)] z-30'; nodeDiv.innerHTML = nodeIcons[node.type]; }
                 else if (isCleared) { baseClass += 'bg-gray-800 border-green-600 opacity-60 z-20'; nodeDiv.innerHTML = '✔️'; }
@@ -534,19 +557,26 @@
             });
             container.appendChild(rowDiv);
         });
-        setTimeout(drawMapLines, 50);
+        setTimeout(() => { 
+            drawMapLines(); 
+            // 맵 진입/그리기 완료 시 가장 아래(시작 지점)로 스크롤 이동
+            const scrollArea = document.getElementById('map-scroll-area');
+            if(scrollArea) scrollArea.scrollTop = scrollArea.scrollHeight;
+        }, 50);
     }
     
     function drawMapLines() {
-        const svg = document.getElementById('map-lines'); const scrollArea = document.getElementById('map-scroll-area');
-        if (!svg || !currentMapData) return; svg.innerHTML = ''; svg.setAttribute('height', document.getElementById('map-nodes').scrollHeight);
-        const containerRect = scrollArea.getBoundingClientRect();
+        const svg = document.getElementById('map-lines'); const scrollArea = document.getElementById('map-scroll-area'); const mapNodes = document.getElementById('map-nodes');
+        if (!svg || !currentMapData) return; svg.innerHTML = ''; 
+        svg.setAttribute('height', mapNodes.scrollHeight); // 전체 높이에 맞춤
+        const containerRect = mapNodes.getBoundingClientRect(); // 기준을 nodes 컨테이너로
+        
         currentMapData.links.forEach(([id1, id2]) => {
             const el1 = document.getElementById(`node-${id1}`); const el2 = document.getElementById(`node-${id2}`);
             if (el1 && el2) {
                 const r1 = el1.getBoundingClientRect(); const r2 = el2.getBoundingClientRect();
-                const x1 = r1.left + r1.width/2 - containerRect.left + scrollArea.scrollLeft; const y1 = r1.top + r1.height/2 - containerRect.top + scrollArea.scrollTop;
-                const x2 = r2.left + r2.width/2 - containerRect.left + scrollArea.scrollLeft; const y2 = r2.top + r2.height/2 - containerRect.top + scrollArea.scrollTop;
+                const x1 = r1.left + r1.width/2 - containerRect.left; const y1 = r1.top + r1.height/2 - containerRect.top;
+                const x2 = r2.left + r2.width/2 - containerRect.left; const y2 = r2.top + r2.height/2 - containerRect.top;
                 const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
                 line.setAttribute('x1', x1); line.setAttribute('y1', y1); line.setAttribute('x2', x2); line.setAttribute('y2', y2);
                 const isCleared = clearedNodes.includes(id1) && clearedNodes.includes(id2);
@@ -570,29 +600,45 @@
     }
 
     function exitDungeon(isFlee = false) {
-        if (isFlee && currentDungeon) {
-            let expPen = dungeonGainedExp > 0 ? dungeonGainedExp : Math.floor(player.exp * 0.05); player.exp = Math.max(0, player.exp - expPen); 
-            showMsg(`[도망침]\n경험치 ${expPen}을(를) 잃었습니다.\n(골드는 무사합니다!)`); updateStats();
-        }
-        isBattling = false; currentDungeon = null; currentMapData = null;
-        document.getElementById('battle-field').classList.add('hidden'); document.getElementById('dungeon-map-view').classList.add('hidden');
-        document.getElementById('event-view').classList.add('hidden'); document.getElementById('dungeon-select').classList.remove('hidden');
-        document.getElementById('confirm-modal').classList.add('hidden');
+        try {
+            if (isFlee && currentDungeon) {
+                let expPen = dungeonGainedExp > 0 ? dungeonGainedExp : Math.floor(player.exp * 0.05); 
+                player.exp = Math.max(0, player.exp - expPen); // 경험치만 까이고 골드 패널티 없음(거지런)
+                showMsg(`[도망침]\n경험치 ${expPen}을(를) 잃었습니다.\n(골드는 무사합니다!)`); 
+            }
+            isBattling = false; isBossBattle = false; currentDungeon = null; currentMapData = null;
+            document.getElementById('battle-field').classList.add('hidden'); document.getElementById('dungeon-map-view').classList.add('hidden');
+            document.getElementById('event-view').classList.add('hidden'); document.getElementById('dungeon-select').classList.remove('hidden');
+            document.getElementById('confirm-modal').classList.add('hidden');
+            updateStats();
+        } catch (e) { console.error(e); }
     }
     function executeFlee() { exitDungeon(true); if(pendingTargetView) { forceSwitchView(pendingTargetView); pendingTargetView = null; } }
     function cancelSwitch() { document.getElementById('confirm-modal').classList.add('hidden'); pendingTargetView = null; }
     function requestFlee() { document.getElementById('confirm-modal').classList.remove('hidden'); }
 
     function attemptEnterNode(node) {
+        // [중요 버그 수정] 이벤트 노드 진입 전 Boss 상태 완전 해제
+        isBossBattle = false;
+
         if(node.type === 'boss') {
             document.getElementById('quiz-title').innerText = "보스의 방 - 비밀의 문"; document.getElementById('quiz-desc').innerText = "단원 평가. 오답 시 30 피해.";
             showQuizModal(currentDungeon, (isSuccess) => {
-                if(isSuccess) { showMsg("비밀의 문이 열렸습니다!"); setTimeout(() => { currentNodeId = node.id; document.getElementById('dungeon-map-view').classList.add('hidden'); isBossBattle = true; startBattle(true); }, 1000); } 
-                else { player.hp -= 30; updateStats(); if(player.hp <= 0) die(); else showMsg("오답! 마법 함정으로 30 피해를 입었습니다."); }
+                if(isSuccess) { 
+                    showMsg("비밀의 문이 열렸습니다!"); 
+                    setTimeout(() => { currentNodeId = node.id; document.getElementById('dungeon-map-view').classList.add('hidden'); isBossBattle = true; startBattle(true); }, 1000); 
+                } else { 
+                    player.hp -= 30; updateStats(); 
+                    if(player.hp <= 0) die(); else showMsg("오답! 마법 함정으로 30 피해를 입었습니다."); 
+                }
             });
         } else {
             currentNodeId = node.id; document.getElementById('dungeon-map-view').classList.add('hidden');
-            if (node.type === 'monster') { isBossBattle = false; startBattle(false); } else { handleEventNode(node.type); }
+            if (node.type === 'monster') { 
+                startBattle(false); 
+            } else { 
+                handleEventNode(node.type); 
+            }
         }
     }
 
@@ -645,9 +691,10 @@
     }
 
     function completeNode() {
-        clearedNodes.push(currentNodeId); document.getElementById('event-view').classList.add('hidden'); document.getElementById('battle-field').classList.add('hidden');
+        clearedNodes.push(currentNodeId); 
+        document.getElementById('event-view').classList.add('hidden'); 
+        document.getElementById('battle-field').classList.add('hidden');
         
-        // 오크 전사의 갑옷 패시브 (방 클리어 시 회복)
         if (player.inventory.equip.armor && itemDB[player.inventory.equip.armor.id].special?.type === 'heal_on_clear') {
             const healAmount = itemDB[player.inventory.equip.armor.id].special.heal;
             player.hp = Math.min(player.maxHp, player.hp + healAmount);
@@ -655,8 +702,18 @@
             updateStats();
         }
 
-        if (isBossBattle) { updateQuestProgress('clear', currentDungeon); showMsg(`🎉 축하합니다! [${currentDungeon}] 정복 완료!`); exitDungeon(); return; }
-        document.getElementById('dungeon-map-view').classList.remove('hidden'); renderMap();
+        if (isBossBattle) { 
+            // 보스 처치 성공 시 업적 추가
+            player.achievements[currentDungeon] = (player.achievements[currentDungeon] || 0) + 1;
+            updateAchievementsUI();
+            updateQuestProgress('clear', currentDungeon); 
+            showMsg(`🎉 축하합니다! [${currentDungeon}] 정복 완료!`); 
+            exitDungeon(); 
+            return; 
+        }
+        // 일반 노드나 전투 종료 후 다시 맵 화면 띄움
+        document.getElementById('dungeon-map-view').classList.remove('hidden'); 
+        renderMap();
     }
 
     function startBattle(isBoss) {
@@ -667,14 +724,14 @@
         else { const dMons = monsters.filter(m => m.dungeon === currentDungeon); currentMonster = { ...dMons[Math.floor(Math.random() * dMons.length)] }; els.mSprite.classList.remove('scale-150', 'text-red-500'); }
         
         currentMonster.maxHp = currentMonster.hp; currentMonster.status = { bleed: 0, bleedDmg: 0, paralyze: false, isPoison: false }; 
-        currentMonster.turnCount = 0; // 마왕 등 보스 로직용 턴 카운터
+        currentMonster.turnCount = 0; 
         
         els.mName.innerText = currentMonster.name; els.mSprite.innerText = currentMonster.sprite; updateMonsterHp(); 
         logMessage(`야생의 <span class="text-red-400">${currentMonster.name}</span> 등장!`);
     }
 
     function startMimicBattle() {
-        document.getElementById('battle-field').classList.remove('hidden'); els.log.innerHTML = '<div class="text-purple-400">함정 발동! 상자가 미믹이었습니다!</div>'; isBattling = true; isBossBattle = false;
+        document.getElementById('battle-field').classList.remove('hidden'); els.log.innerHTML = '<div class="text-purple-400">함정 발동! 상자가 미믹이었습니다!</div>'; isBattling = true; isBossBattle = false; // 보스가 아님을 명확히
         currentMonster = { name: "미믹", level: 10, hp: 300, maxHp: 300, atk: 40, def: 15, exp: 200, gold: 300, sprite: '🧰', drop: 'k1', status: {bleed:0, paralyze:false}, turnCount: 0 };
         els.mSprite.classList.remove('scale-150', 'text-red-500'); els.mName.innerText = currentMonster.name; els.mSprite.innerText = currentMonster.sprite; updateMonsterHp();
     }
@@ -693,7 +750,6 @@
     function attack() {
         if (!isBattling || player.hp <= 0) return;
         
-        // 물리 면역 몬스터 처리
         if (currentMonster.physicalImmune) {
             logMessage(`🛡️ 일반 물리 타격이 <span class="text-red-400">무효화</span> 되었습니다! (진리/마법 필요)`, 'text-gray-400 font-bold');
             els.mSprite.style.transform = 'scale(0.9)'; setTimeout(() => els.mSprite.style.transform = 'none', 100);
@@ -712,12 +768,7 @@
             dmg = Math.floor(dmg * ((1 - variance) + Math.random() * (variance * 2)));
 
             if(special && special.type === 'crit' && Math.random() < special.chance) { dmg = Math.floor(dmg * special.mult); logMessage('💥 크리티컬 히트!', 'text-red-400 font-bold'); }
-            
-            // 즉사기 (고블린 족장의 창)
-            if(special && special.type === 'anti_goblin' && currentMonster.name.includes('고블린')) {
-                dmg = currentMonster.hp; // 즉사
-                logMessage('🔱 고블린 족장의 창 발동! 고블린을 일격에 즉사시킵니다!', 'text-purple-400 font-bold');
-            }
+            if(special && special.type === 'anti_goblin' && currentMonster.name.includes('고블린')) { dmg = currentMonster.hp; logMessage('🔱 고블린 족장의 창 발동! 고블린을 즉사시킵니다!', 'text-purple-400 font-bold'); }
 
             currentMonster.hp -= dmg; logMessage(`공격! ${currentMonster.name}에게 ${dmg} 피해.`);
 
@@ -733,11 +784,10 @@
     }
 
     function openBattleSkill() {
-        if(!isBattling) return; 
-        const list = document.getElementById('battle-skill-list-container'); list.innerHTML = ''; 
+        if(!isBattling) return; const list = document.getElementById('battle-skill-list-container'); list.innerHTML = ''; 
         const activeSkills = player.skills.map(id => skillDB.find(s => s.id === id)).filter(s => s && s.type === "마법(액티브)");
         
-        if(activeSkills.length === 0) { list.innerHTML = '<div class="text-center text-gray-500 py-4 text-xs">배운 마법이 없습니다. 상점(진리)에서 배우세요.</div>'; }
+        if(activeSkills.length === 0) { list.innerHTML = '<div class="text-center text-gray-500 py-4 text-xs">배운 마법이 없습니다.</div>'; }
         else {
             activeSkills.forEach(skill => {
                 const btn = document.createElement('button');
@@ -752,33 +802,23 @@
 
     function castSkill(skillId) {
         if (!isBattling || player.hp <= 0) return;
-        
         let mpCost = 0; let castSuccess = false;
+        
         if(skillId === 's2' && player.mp >= 20) {
-            mpCost = 20;
-            let dmg = Math.max(1, Math.floor(getTotalAtk() * 2.5) - currentMonster.def); currentMonster.hp -= dmg;
+            mpCost = 20; let dmg = Math.max(1, Math.floor(getTotalAtk() * 2.5) - currentMonster.def); currentMonster.hp -= dmg;
             logMessage(`💨 [바람의 함수] ${currentMonster.name}에게 <span class="text-yellow-400">${dmg}</span> 피해!`); castSuccess = true;
         } else if(skillId === 's3' && player.mp >= 40) {
-            mpCost = 40;
-            let dmg = Math.floor(getTotalAtk() * 3.0); currentMonster.hp -= dmg; // 방어 무시
+            mpCost = 40; let dmg = Math.floor(getTotalAtk() * 3.0); currentMonster.hp -= dmg; 
             logMessage(`📐 [피타고라스 일격] 방어력을 뚫고 <span class="text-red-400 font-bold">${dmg}</span> 치명적 피해!`); castSuccess = true;
         } else if(skillId === 's4' && player.mp >= 30) {
-            mpCost = 30;
-            logMessage(`🔢 [방정식의 폭주] 마력 연타 시작!`, 'text-purple-400');
-            for(let i=0; i<3; i++) {
-                if(currentMonster.hp <= 0) break;
-                let dmg = Math.max(1, Math.floor(getTotalAtk() * 1.5) - currentMonster.def); currentMonster.hp -= dmg;
-                logMessage(` ➡️ ${i+1}연타: ${dmg} 피해!`);
-            }
+            mpCost = 30; logMessage(`🔢 [방정식의 폭주] 마력 연타 시작!`, 'text-purple-400');
+            for(let i=0; i<3; i++) { if(currentMonster.hp <= 0) break; let dmg = Math.max(1, Math.floor(getTotalAtk() * 1.5) - currentMonster.def); currentMonster.hp -= dmg; logMessage(` ➡️ ${i+1}연타: ${dmg} 피해!`); }
             castSuccess = true;
         } else if(skillId === 's5' && player.mp >= 25) {
-            mpCost = 25;
-            player.hp = Math.min(player.maxHp, player.hp + 100);
-            playerBattleStatus.defBuff = 30; playerBattleStatus.defBuffTurns = 3;
+            mpCost = 25; player.hp = Math.min(player.maxHp, player.hp + 100); playerBattleStatus.defBuff = 30; playerBattleStatus.defBuffTurns = 3;
             logMessage(`🔰 [절대값 쉴드] 체력 100 회복 & 3턴간 방어력 +30!`, 'text-green-400 font-bold'); castSuccess = true;
         } else if(skillId === 's6' && player.mp >= 80) {
-            mpCost = 80;
-            let dmg = Math.floor(getTotalAtk() * 5.0); currentMonster.hp -= dmg; // 방어 완전 무시 파멸적 데미지
+            mpCost = 80; let dmg = Math.floor(getTotalAtk() * 5.0); currentMonster.hp -= dmg; 
             logMessage(`☄️ [운석의 기하학] 하늘에서 거대한 메테오가 떨어집니다! 방어를 무시하고 <span class="text-red-500 font-bold text-xl">${dmg}</span> 피해!`); castSuccess = true;
         }
 
@@ -786,20 +826,16 @@
         
         player.mp -= mpCost; updateStats(); updateMonsterHp();
         els.mSprite.style.transform = 'scale(1.2) rotate(10deg) brightness(2)'; setTimeout(() => els.mSprite.style.transform = '', 150);
-        
         if (currentMonster.hp <= 0) winBattle(); else setTimeout(monsterTurn, 600);
     }
 
     function monsterTurn() {
         if (!isBattling || player.hp <= 0 || currentMonster.hp <= 0) return;
-
         currentMonster.turnCount++;
 
-        // 플레이어 버프 지속시간 감소
         if(playerBattleStatus.atkBuffTurns > 0) { playerBattleStatus.atkBuffTurns--; if(playerBattleStatus.atkBuffTurns <= 0) { playerBattleStatus.atkBuff = 0; logMessage(`공격력 버프가 사라졌습니다.`, 'text-gray-400'); updateStats(); } }
         if(playerBattleStatus.defBuffTurns > 0) { playerBattleStatus.defBuffTurns--; if(playerBattleStatus.defBuffTurns <= 0) { playerBattleStatus.defBuff = 0; logMessage(`방어력 버프가 사라졌습니다.`, 'text-gray-400'); updateStats(); } }
 
-        // 상태이상 데미지 처리
         if(currentMonster.status && currentMonster.status.bleed > 0) {
             currentMonster.hp -= currentMonster.status.bleedDmg; currentMonster.status.bleed--;
             const dotMsg = currentMonster.status.isPoison ? `☠️ 맹독 피해! ${currentMonster.name}이(가) ${currentMonster.status.bleedDmg} 피해를 입었습니다.` : `🩸 출혈 피해! ${currentMonster.name}이(가) ${currentMonster.status.bleedDmg} 피해를 입었습니다.`;
@@ -811,12 +847,8 @@
             logMessage(`⚡ ${currentMonster.name}은(는) 마비되어 움직일 수 없습니다!`, 'text-purple-400'); currentMonster.status.paralyze = false; updateMonsterHp(); return;
         }
 
-        // 보스 특수 로직 (마왕)
         if(currentMonster.name === "수학의 대마왕") {
-            if(currentMonster.turnCount % 4 === 3) {
-                currentMonster.hp = Math.min(currentMonster.maxHp, currentMonster.hp + 300); updateMonsterHp();
-                logMessage(`👿 대마왕이 [암흑 연산]으로 체력을 300 회복합니다!`, 'text-purple-400 font-bold'); return;
-            }
+            if(currentMonster.turnCount % 4 === 3) { currentMonster.hp = Math.min(currentMonster.maxHp, currentMonster.hp + 300); updateMonsterHp(); logMessage(`👿 대마왕이 [암흑 연산]으로 체력을 300 회복합니다!`, 'text-purple-400 font-bold'); return; }
             if(currentMonster.turnCount % 4 === 0) {
                 let dmg = Math.max(1, (currentMonster.atk * 2) - Math.floor(getTotalDef() / 2)); player.hp -= dmg;
                 logMessage(`☄️ 대마왕의 궁극기! [차원 붕괴] 방어력을 관통하여 ${dmg} 피해!`, 'text-red-500 font-bold text-lg');
@@ -825,7 +857,6 @@
             }
         }
 
-        // 일반 공격 처리
         let dmg = Math.max(1, currentMonster.atk - getTotalDef()); player.hp -= dmg; updateStats();
         document.body.style.backgroundColor = '#420000'; setTimeout(() => document.body.style.backgroundColor = '#1a1a1a', 100);
         logMessage(`💥 ${currentMonster.name}의 반격! ${dmg} 피해.`, 'text-red-400');
@@ -834,8 +865,9 @@
 
     function winBattle() {
         isBattling = false; const exp = currentMonster.exp; const gold = currentMonster.gold;
-        player.exp += exp; dungeonGainedGold += gold;
-        logMessage(`🏆 승리! 경험치 ${exp}, 골드 ${gold} 획득!`, 'text-yellow-400'); updateQuestProgress('kill', currentMonster.name);
+        player.exp += exp; dungeonGainedGold += gold; dungeonGainedExp += exp;
+        logMessage(`🏆 승리! 경험치 ${exp}, 골드 ${gold} 획득!`, 'text-yellow-400'); 
+        updateQuestProgress('kill', currentMonster.name);
 
         if(isBossBattle) { 
             let dropId = null, matId = null, wChance = 0, mChance = 0;
@@ -846,12 +878,10 @@
             else if (currentDungeon === '뒤틀린 슬라임 부족') { dropId = 'b_w4'; matId = 'b_p1'; wChance = 0.01; mChance = 0.10; }
 
             const roll = Math.random();
-            if (dropId && roll < wChance) {
-                if(addItemToInventory('bag', dropId)) logMessage(`✨ 전설의 보스 장비 [${itemDB[dropId].name}] 획득!!`, 'text-purple-400 font-bold');
-            } else if (matId && roll < wChance + mChance) {
-                if(addItemToInventory('bag', matId)) logMessage(`🎁 보스 전리품 [${itemDB[matId].name}] 획득!`, 'text-green-300 font-bold');
-            }
+            if (dropId && roll < wChance) { if(addItemToInventory('bag', dropId)) logMessage(`✨ 전설의 보스 장비 [${itemDB[dropId].name}] 획득!!`, 'text-purple-400 font-bold'); } 
+            else if (matId && roll < wChance + mChance) { if(addItemToInventory('bag', matId)) logMessage(`🎁 보스 전리품 [${itemDB[matId].name}] 획득!`, 'text-green-300 font-bold'); }
         } else if(currentMonster.drop && Math.random() < 0.5) { addItemToInventory('bag', currentMonster.drop); logMessage(`전리품: [${itemDB[currentMonster.drop].name}]`, 'text-green-300'); }
+        
         els.mSprite.style.opacity = '0.2'; checkLevelUp(); updateStats(); setTimeout(() => { els.mSprite.style.opacity = '1'; completeNode(); }, 1200);
     }
 
@@ -860,30 +890,31 @@
             player.level++; player.exp -= player.maxExp; player.maxExp = Math.floor(player.maxExp * 1.5);
             player.maxHp += 20; player.hp = player.maxHp; player.maxMp += 10; player.mp = player.maxMp; player.baseAtk += 3; player.baseDef += 1;
             logMessage(`🎉 레벨 업! LEVEL ${player.level} 달성!`, 'text-yellow-400 font-bold');
-            if (player.exp >= player.maxExp) checkLevelUp();
+            if (player.exp >= player.maxExp) checkLevelUp(); // 연속 렙업 처리
         }
     }
 
     function die() {
-        isBattling = false; currentDungeon = null; showMsg("💀 눈 앞이 깜깜해졌다... 마을로 귀환합니다.");
-        player.hp = player.maxHp * 0.1; player.exp = Math.max(0, player.exp - (player.maxExp * 0.1)); updateStats();
-        document.getElementById('battle-field').classList.add('hidden'); document.getElementById('dungeon-map-view').classList.add('hidden');
-        document.getElementById('event-view').classList.add('hidden'); document.getElementById('dungeon-select').classList.remove('hidden');
-        forceSwitchView('view-quest');
+        try {
+            isBattling = false; currentDungeon = null; showMsg("💀 눈 앞이 깜깜해졌다... 마을로 귀환합니다.");
+            player.hp = player.maxHp * 0.1; player.exp = Math.max(0, player.exp - (player.maxExp * 0.1)); updateStats();
+            document.getElementById('battle-field').classList.add('hidden'); document.getElementById('dungeon-map-view').classList.add('hidden');
+            document.getElementById('event-view').classList.add('hidden'); document.getElementById('dungeon-select').classList.remove('hidden');
+            forceSwitchView('view-quest');
+        } catch(e) { console.error(e); }
     }
     
     function refreshQuestBoard() {
         const board = document.getElementById('quest-content');
         if (!player.activeQuest) {
             if (!window.offeredQuest) {
-                // 플레이어의 현재 레벨에 맞는 퀘스트만 필터링 (너무 낮지도, 높지도 않게)
                 let availableQuests = questDB.filter(q => player.level >= q.reqLevel && player.level < q.reqLevel + 5);
                 if (availableQuests.length === 0) availableQuests = questDB.filter(q => player.level >= q.reqLevel);
-                if (availableQuests.length === 0) availableQuests = [questDB[0]]; // Fallback
+                if (availableQuests.length === 0) availableQuests = [questDB[0]]; 
                 window.offeredQuest = availableQuests[Math.floor(Math.random() * availableQuests.length)];
             }
             const q = window.offeredQuest;
-            board.innerHTML = `<div class="text-gray-400 text-xs mb-2">현재 레벨(Lv.${player.level}) 맞춤 의뢰가 들어왔습니다.</div><div class="text-blue-300 font-bold mb-1">[의뢰] ${q.title} <span class="text-[0.6rem] text-gray-500 font-normal">(요구 Lv.${q.reqLevel})</span></div><div class="text-xs mb-3 text-gray-400">${q.desc}</div><div class="text-xs text-yellow-400 mb-3 text-right">보상: ${q.gold}G, ${q.exp}EXP</div><button class="pixel-btn py-2 bg-blue-800 text-white w-full" onclick="acceptQuest(${q.id})">의뢰 수락하기</button>`;
+            board.innerHTML = `<div class="text-gray-400 text-xs mb-2">새로운 의뢰가 들어왔습니다.</div><div class="text-blue-300 font-bold mb-1">[의뢰] ${q.title} <span class="text-[0.6rem] text-gray-500 font-normal">(요구 Lv.${q.reqLevel})</span></div><div class="text-xs mb-3 text-gray-400">${q.desc}</div><div class="text-xs text-yellow-400 mb-3 text-right">보상: ${q.gold}G, ${q.exp}EXP</div><button class="pixel-btn py-2 bg-blue-800 text-white w-full" onclick="acceptQuest(${q.id})">의뢰 수락하기</button>`;
         } else {
             const q = player.activeQuest;
             if (q.currentCount >= q.count) { board.innerHTML = `<div class="text-green-400 font-bold mb-1">[완료] ${q.title}</div><div class="text-xs mb-3 text-gray-400">${q.desc}</div><button class="pixel-btn py-2 bg-yellow-700 text-white w-full" onclick="completeQuest()">보상 받기 (${q.gold}G, ${q.exp}EXP)</button>`; }
@@ -894,11 +925,7 @@
     function completeQuest() { const q = player.activeQuest; player.gold += q.gold; player.exp += q.exp; showMsg(`퀘스트 완료!\n${q.gold} 골드, ${q.exp} 경험치`); player.activeQuest = null; checkLevelUp(); updateStats(); refreshQuestBoard(); }
     function updateQuestProgress(type, target) {
         if (!player.activeQuest) return; const q = player.activeQuest;
-        if (q.type === type && q.target === target && q.currentCount < q.count) { 
-            q.currentCount++; 
-            refreshQuestBoard(); 
-            if (q.currentCount >= q.count) showMsg(`[퀘스트 완료] ${q.title}\n마을로 돌아가 보상을 받으세요!`); 
-        }
+        if (q.type === type && q.target === target && q.currentCount < q.count) { q.currentCount++; refreshQuestBoard(); if (q.currentCount >= q.count) showMsg(`[퀘스트 완료] ${q.title}\n마을로 돌아가 보상을 받으세요!`); }
     }
 
     function renderInventory() {
@@ -948,7 +975,6 @@
     }
 
     function unequipItem(slot) { if(player.inventory.bag.length >= 12) return showMsg('가방이 꽉 차 벗을 수 없습니다.'); addItemToInventory('bag', player.inventory.equip[slot].id, 1); player.inventory.equip[slot] = null; document.getElementById('item-modal').classList.add('hidden'); updateStats(); }
-    
     function useItemFromModal() { applyItemEffect(currentActionItem.item.id); if(currentActionItem.item.count > 1) currentActionItem.item.count--; else player.inventory.bag.splice(currentActionItem.index, 1); document.getElementById('item-modal').classList.add('hidden'); updateStats(); }
 
     function openBattleBag() {
@@ -968,13 +994,7 @@
         const info = itemDB[id]; 
         if(info.healHp) player.hp = Math.min(player.maxHp, player.hp + info.healHp); 
         if(info.healMp) player.mp = Math.min(player.maxMp, player.mp + info.healMp); 
-        
-        if(info.special && info.special.type === 'buff_atk') {
-            playerBattleStatus.atkBuff = info.special.amount;
-            playerBattleStatus.atkBuffTurns = info.special.turns;
-            logMessage(`💪 [${info.name}] 효과! ${info.special.turns}턴 동안 공격력이 ${info.special.amount} 증가합니다!`, 'text-yellow-400 font-bold');
-            updateStats();
-        }
+        if(info.special && info.special.type === 'buff_atk') { playerBattleStatus.atkBuff = info.special.amount; playerBattleStatus.atkBuffTurns = info.special.turns; logMessage(`💪 [${info.name}] 효과! ${info.special.turns}턴 동안 공격력이 ${info.special.amount} 증가!`, 'text-yellow-400 font-bold'); updateStats(); }
     }
     
     function addItemToInventory(loc, id, count = 1) { if(player.inventory[loc].length >= (loc==='bag'?12:24)) return false; const existing = player.inventory[loc].find(i => i.id === id); if(existing && itemDB[id].type !== 'weapon' && itemDB[id].type !== 'armor') existing.count += count; else player.inventory[loc].push({ id: id, count: count }); return true; }
@@ -987,26 +1007,19 @@
             Object.values(itemDB).filter(i => (i.type !== 'material' || i.id === 'k1') && (!i.isDrop || i.isBossDrop)).forEach(item => {
                 const reqLvl = item.reqLevel || 1; const canBuy = player.level >= reqLvl;
                 const div = document.createElement('div'); div.className = "pixel-border p-2 bg-[#222] flex justify-between items-center";
-                
                 let btnHtml = '';
-                if(item.isBossDrop) {
-                    btnHtml = `<button class="pixel-btn text-xs py-1 px-2 bg-purple-900 shrink-0 ml-2 w-16" disabled>드랍</button>`;
-                } else if (canBuy) {
-                    btnHtml = `<button class="pixel-btn text-xs py-1 px-2 bg-yellow-700 shrink-0 ml-2 w-16" onclick="buyItem('${item.id}')">${item.price}🪙</button>`;
-                } else {
-                    btnHtml = `<button class="pixel-btn text-xs py-1 px-2 bg-gray-600 shrink-0 ml-2 w-16" disabled>잠김</button>`;
-                }
-                
+                if(item.isBossDrop) btnHtml = `<button class="pixel-btn text-xs py-1 px-2 bg-purple-900 shrink-0 ml-2 w-16" disabled>드랍</button>`;
+                else if (canBuy) btnHtml = `<button class="pixel-btn text-xs py-1 px-2 bg-yellow-700 shrink-0 ml-2 w-16" onclick="buyItem('${item.id}')">${item.price}🪙</button>`;
+                else btnHtml = `<button class="pixel-btn text-xs py-1 px-2 bg-gray-600 shrink-0 ml-2 w-16" disabled>잠김</button>`;
                 div.innerHTML = `<div class="flex items-center gap-3 ${canBuy || item.isBossDrop ? '' : 'opacity-40 grayscale'}"><div class="w-10 h-10 bg-black border border-gray-700 flex items-center justify-center text-xl shrink-0 relative">${item.icon}</div><div><div class="text-white text-sm">${item.name} ${item.isBossDrop ? `<span class="text-purple-400 text-xs font-bold ml-1">[보스]</span>` : (canBuy?'':`<span class="text-red-400 text-xs font-bold ml-1">[Lv.${reqLvl} 필요]</span>`)}</div><div class="text-[0.6rem] text-gray-400 whitespace-pre-wrap">${item.desc}</div></div></div>${btnHtml}`;
                 list.appendChild(div);
             });
         } else {
             const allItems = []; player.inventory.bag.forEach((it, idx) => allItems.push({ ...it, loc: 'bag', index: idx })); player.inventory.stash.forEach((it, idx) => allItems.push({ ...it, loc: 'stash', index: idx }));
-            if(allItems.length === 0) return list.innerHTML = '<div class="text-center text-gray-500 py-4 text-sm">판매할 수 있는 아이템이 없습니다.</div>';
+            if(allItems.length === 0) return list.innerHTML = '<div class="text-center text-gray-500 py-4 text-sm">판매할 아이템이 없습니다.</div>';
             allItems.forEach(item => {
                 const dbInfo = itemDB[item.id]; const sellPrice = Math.max(1, Math.floor(dbInfo.price * 0.5)); const div = document.createElement('div'); div.className = "pixel-border p-2 bg-[#222] flex justify-between items-center";
-                div.innerHTML = `<div class="flex items-center gap-3"><div class="w-10 h-10 bg-black border border-gray-700 flex items-center justify-center text-xl relative">${dbInfo.icon}${item.count>1?`<span class="item-count">${item.count}</span>`:''}</div><div><div class="text-white text-sm">${dbInfo.name} <span class="text-[10px] text-gray-500">(${item.loc==='bag'?'가방':'창고'})</span></div></div></div>
-                    <button class="pixel-btn text-xs py-1 px-2 bg-gray-600 w-16" onclick="sellItem('${item.loc}', ${item.index}, ${sellPrice})">+${sellPrice}🪙</button>`; list.appendChild(div);
+                div.innerHTML = `<div class="flex items-center gap-3"><div class="w-10 h-10 bg-black border border-gray-700 flex items-center justify-center text-xl relative">${dbInfo.icon}${item.count>1?`<span class="item-count">${item.count}</span>`:''}</div><div><div class="text-white text-sm">${dbInfo.name} <span class="text-[10px] text-gray-500">(${item.loc==='bag'?'가방':'창고'})</span></div></div></div><button class="pixel-btn text-xs py-1 px-2 bg-gray-600 w-16" onclick="sellItem('${item.loc}', ${item.index}, ${sellPrice})">+${sellPrice}🪙</button>`; list.appendChild(div);
             });
         }
     }
@@ -1019,9 +1032,7 @@
         skillDB.forEach(skill => {
             const isLearned = player.skills.includes(skill.id); const canBuy = player.level >= skill.reqLevel;
             const div = document.createElement('div'); div.className = `pixel-border p-2 flex justify-between items-center cursor-pointer hover:bg-[#333] border-gray-600`;
-            div.innerHTML = `<div class="flex items-center gap-3 ${canBuy ? '' : 'opacity-40 grayscale'}"><div class="w-12 h-12 bg-black border border-gray-700 flex items-center justify-center text-2xl relative">${skill.icon} ${isLearned?'<div class="absolute -bottom-1 -right-1 bg-red-600 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center">V</div>':''}</div>
-                    <div><div class="text-white">${skill.name}</div><div class="text-xs ${skill.color}">${skill.type} ${canBuy?'':`<span class="text-red-400 font-bold ml-1">Lv.${skill.reqLevel} 해금</span>`}</div></div></div>
-                <button class="pixel-btn text-sm py-1 px-3" onclick="selectSkill('${skill.id}')">정보</button>`; list.appendChild(div);
+            div.innerHTML = `<div class="flex items-center gap-3 ${canBuy ? '' : 'opacity-40 grayscale'}"><div class="w-12 h-12 bg-black border border-gray-700 flex items-center justify-center text-2xl relative">${skill.icon} ${isLearned?'<div class="absolute -bottom-1 -right-1 bg-red-600 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center">V</div>':''}</div><div><div class="text-white">${skill.name}</div><div class="text-xs ${skill.color}">${skill.type} ${canBuy?'':`<span class="text-red-400 font-bold ml-1">Lv.${skill.reqLevel} 해금</span>`}</div></div></div><button class="pixel-btn text-sm py-1 px-3" onclick="selectSkill('${skill.id}')">정보</button>`; list.appendChild(div);
         });
     }
     
@@ -1036,8 +1047,10 @@
     function buySkill() { if(!selectedSkill || player.skills.includes(selectedSkill.id)) return; if(player.gold >= selectedSkill.cost) { player.gold -= selectedSkill.cost; player.skills.push(selectedSkill.id); selectedSkill.effect(); updateStats(); selectSkill(selectedSkill.id); renderSkillList(); showMsg(`[${selectedSkill.name}] 습득 완료!`); } else { showMsg("골드가 부족합니다."); } }
     function restInTown() { if(player.hp >= player.maxHp && player.mp >= player.maxMp) return showMsg("이미 체력과 마나가 가득 차 있습니다."); if(player.gold >= 50) { player.gold -= 50; player.hp = player.maxHp; player.mp = player.maxMp; updateStats(); showMsg("여관에서 푹 쉬었습니다!"); } else { showMsg("골드가 부족합니다."); } }
 
-    addItemToInventory('bag', 'w1', 1); addItemToInventory('bag', 'k1', 1); addItemToInventory('bag', 'p1', 2);
-    updateStats(); renderSkillList(); refreshQuestBoard(); forceSwitchView('view-quest');
+    window.onload = function() {
+        addItemToInventory('bag', 'w1', 1); addItemToInventory('bag', 'k1', 1); addItemToInventory('bag', 'p1', 2);
+        updateStats(); renderSkillList(); updateAchievementsUI(); refreshQuestBoard(); forceSwitchView('view-quest');
+    };
 </script>
 </body>
 </html>
