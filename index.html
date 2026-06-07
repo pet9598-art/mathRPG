@@ -2,1055 +2,1416 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>레트로 수학 전사 RPG</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Math Arena 3v3 - 로비 및 멀티플레이</title>
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+    <!-- NippleJS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/nipplejs/0.10.1/nipplejs.min.js"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+
     <style>
-        body { font-family: 'VT323', monospace; background-color: #1a1a1a; color: #e0e0e0; margin: 0; padding: 0; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; user-select: none; }
-        #game-container { width: 100%; max-width: 480px; height: 100%; max-height: 850px; background-color: #111; display: flex; flex-direction: column; border: 4px solid #555; box-shadow: 0 0 30px rgba(0,0,0,0.9); position: relative; }
-        .pixel-border { border: 2px solid #555; box-shadow: inset -2px -2px 0px 0px #000, inset 2px 2px 0px 0px #777; }
-        .pixel-btn { background-color: #3b3b3b; color: white; border: 2px solid #777; box-shadow: inset -2px -2px 0px 0px #111, inset 2px 2px 0px 0px #555; cursor: pointer; text-align: center; transition: transform 0.05s; }
-        .pixel-btn:active { box-shadow: inset 2px 2px 0px 0px #111, inset -2px -2px 0px 0px #555; background-color: #2a2a2a; transform: translateY(2px); }
-        .pixel-btn:disabled { opacity: 0.5; cursor: not-allowed; box-shadow: none; transform: none; }
-        .nav-btn { flex: 1; padding: 12px 0; text-align: center; border: 2px solid #444; background-color: #222; cursor: pointer; font-size: 1.2rem; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
-        .nav-btn .nav-text { font-size: 0.7rem; color: #aaa; }
-        .nav-btn.active { background-color: #444; border-color: #777; border-bottom: none; }
-        .nav-btn.active .nav-text { color: #fff; font-weight: bold; }
-        ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-track { background: #111; } ::-webkit-scrollbar-thumb { background: #555; }
-        :root { --hp-red: #d32f2f; --mp-blue: #1976d2; --exp-green: #388e3c; }
-        .text-shadow { text-shadow: 2px 2px 0px #000; }
-        #map-lines { position: absolute; top: 0; left: 0; width: 100%; pointer-events: none; z-index: 0; }
-        .item-slot { position: relative; background-color: #000; border: 1px solid #444; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; cursor: pointer; }
-        .item-slot:hover { border-color: #888; background-color: #222; }
-        .item-count { position: absolute; bottom: 0; right: 2px; font-size: 0.6rem; font-family: sans-serif; font-weight: bold; color: white; text-shadow: 1px 1px 0 #000; }
-        .math-font { font-family: sans-serif; font-weight: bold; }
-        .boss-dungeon { background: linear-gradient(135deg, #4a0000 0%, #1a0000 100%); border-color: #ff4444; }
+        body { margin: 0; overflow: hidden; background-color: #374151; font-family: 'Jua', sans-serif; touch-action: none; user-select: none; }
+        #game-container { position: relative; width: 100vw; height: 100vh; display: none; }
+        canvas { display: block; width: 100%; height: 100%; }
+
+        #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; display: flex; flex-direction: column; justify-content: space-between; box-sizing: border-box; padding: 20px; z-index: 10; }
+        #top-bar { display: flex; justify-content: space-between; align-items: flex-start; width: 100%; }
+        
+        #scoreboard { background: rgba(0, 0, 0, 0.75); padding: 10px 20px; border-radius: 12px; border: 2px solid #4b5563; color: white; font-size: 20px; display: flex; gap: 20px; pointer-events: auto; }
+        .score-team { display: flex; flex-direction: column; align-items: center; }
+        .score-blue { color: #60a5fa; }
+        .score-red { color: #f87171; }
+        .score-numbers { font-size: 24px; font-weight: bold; }
+
+        /* 킬로그 */
+        #kill-log-container { position: absolute; top: 80px; right: 20px; display: flex; flex-direction: column; gap: 8px; pointer-events: none; z-index: 100; align-items: flex-end; }
+        .kill-log-item { background: rgba(0,0,0,0.75); color: white; padding: 6px 16px; border-radius: 8px; font-size: 16px; border: 1px solid rgba(255,255,255,0.3); animation: fadeOut 4.5s forwards; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.5); }
+        @keyframes fadeOut { 0% { opacity: 1; transform: translateX(20px); } 10% { transform: translateX(0); } 80% { opacity: 1; } 100% { opacity: 0; display: none; } }
+
+        /* 점령전 UI */
+        #domination-ui { background: rgba(0, 0, 0, 0.8); padding: 10px 20px; border-radius: 12px; border: 2px solid #fbbf24; color: white; display: none; flex-direction: column; align-items: center; pointer-events: auto;}
+        .dom-time { font-size: 20px; margin-top: 5px; }
+
+        #mission-banner { background: rgba(0, 0, 0, 0.8); color: #fbbf24; padding: 10px 30px; border-radius: 9999px; font-size: 24px; text-align: center; border: 2px solid #fbbf24; transition: transform 0.3s ease; pointer-events: auto; margin: 0 10px;}
+        .mission-pop { transform: scale(1.1); }
+
+        #player-stats { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); background: rgba(0, 0, 0, 0.7); padding: 10px 20px; border-radius: 12px; color: white; display: flex; gap: 20px; align-items: center; pointer-events: auto;}
+        .bar-group { display: flex; flex-direction: column; position: relative; }
+        .hp-bar-container, .ult-bar-container { width: 150px; height: 15px; background: #4a5568; border-radius: 8px; overflow: hidden; margin-bottom: 5px; }
+        .hp-bar-fill { height: 100%; background: #48bb78; width: 100%; transition: width 0.2s; }
+        .ult-bar-fill { height: 100%; background: #ed8936; width: 0%; transition: width 0.2s; }
+
+        #joystick-zone { position: absolute; bottom: 20px; left: 20px; width: 150px; height: 150px; pointer-events: auto; }
+        #skill-zone { position: absolute; bottom: 20px; right: 20px; pointer-events: auto; display: flex; gap: 15px; align-items: flex-end; }
+        
+        .skill-btn { background: rgba(0, 0, 0, 0.6); border: 2px solid rgba(255,255,255,0.5); border-radius: 50%; display: flex; justify-content: center; align-items: center; color: white; font-size: 16px; width: 65px; height: 65px; position: relative; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.5); }
+        .skill-btn:active { transform: scale(0.95); background: rgba(255,255,255,0.3); }
+        .item-badge { position: absolute; top: -5px; right: -5px; background: #ef4444; color: white; border-radius: 50%; width: 24px; height: 24px; font-size: 14px; display: flex; justify-content: center; align-items: center; border: 2px solid white; font-weight: bold;}
+        
+        #btn-grenade { border-color: #fca5a5; color: #fca5a5; }
+        #btn-mine { border-color: #d8b4fe; color: #d8b4fe; }
+        #btn-ult { border-color: #ed8936; color: #ed8936; font-size: 20px; font-weight: bold; width: 75px; height: 75px; }
+        .ult-ready { background: rgba(237, 137, 54, 0.4) !important; animation: pulse 1.5s infinite; color: white !important; border-color: white !important;}
+        #btn-flash { border-color: #38bdf8; color: #38bdf8; }
+        
+        .cooldown-overlay { position: absolute; bottom: -25px; font-size: 14px; font-weight: bold; color: #fbbf24; }
+
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(237, 137, 54, 0.7); } 70% { box-shadow: 0 0 0 15px rgba(237, 137, 54, 0); } 100% { box-shadow: 0 0 0 0 rgba(237, 137, 54, 0); } }
+
+        #quiz-modal-container { display: none; position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.5); z-index: 200; pointer-events: auto; justify-content: center; align-items: center; }
+        #quiz-box { background: #1f2937; border: 4px solid #fbbf24; border-radius: 16px; padding: 30px; width: 90%; max-width: 500px; text-align: center; color: white; box-shadow: 0 10px 25px rgba(0,0,0,0.8); }
+        .quiz-option { background: #3b82f6; border: 2px solid #2563eb; color: white; padding: 15px; margin: 10px 0; border-radius: 8px; font-size: 20px; cursor: pointer; transition: background 0.2s; }
+        .quiz-option:hover { background: #2563eb; }
+
+        /* 시작 카운트다운 */
+        #countdown-overlay { display: none; position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.6); z-index: 250; color: #fbbf24; font-size: 120px; font-weight: bold; justify-content: center; align-items: center; text-shadow: 0 10px 30px rgba(0,0,0,0.8); }
+
+        /* Menus */
+        .fullscreen-menu { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; background: linear-gradient(135deg, #0f172a, #1e3a8a); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 300; }
+        .hidden-menu { display: none !important; }
+        
+        .mode-selection { display: flex; gap: 30px; margin-bottom: 20px; background: rgba(0,0,0,0.3); padding: 15px 30px; border-radius: 12px;}
+        .mode-option { color: white; font-size: 20px; display: flex; align-items: center; gap: 10px; cursor: pointer;}
+        .mode-option input { transform: scale(1.5); }
+
+        .hero-cards { display: flex; gap: 20px; margin: 20px 0; flex-wrap: wrap; justify-content: center; }
+        .hero-card { background: rgba(255,255,255,0.1); border: 4px solid transparent; border-radius: 16px; padding: 20px; width: 180px; text-align: center; cursor: pointer; transition: 0.2s; color: white; }
+        .hero-card:hover { background: rgba(255,255,255,0.2); }
+        .hero-card.selected { border-color: #fbbf24; background: rgba(251, 191, 36, 0.2); transform: scale(1.05); }
+        .hero-icon { width: 60px; height: 60px; margin: 0 auto 10px auto; background: #3b82f6; }
+        
+        .shape-circle { border-radius: 50%; }
+        .shape-square { border-radius: 10px; }
+        .shape-triangle { clip-path: polygon(50% 0%, 0% 100%, 100% 100%); border-radius: 0; }
+        .shape-hexagon { clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%); border-radius: 0; }
+
+        .menu-btn { background: #3b82f6; color: white; padding: 15px 40px; font-size: 24px; border-radius: 12px; margin: 10px; cursor: pointer; border: 4px solid #2563eb; font-family: 'Jua', sans-serif; width: 300px; transition: 0.2s; }
+        .menu-btn:hover { background: #2563eb; transform: scale(1.05); }
+        .menu-btn:disabled { background: #6b7280; border-color: #4b5563; cursor: not-allowed; transform: none; }
+        
+        #modal { display: none; position: absolute; top: 30%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.9); color: white; padding: 20px 40px; border-radius: 10px; z-index: 600; text-align: center; font-size: 32px; border: 2px solid #fbbf24; pointer-events: none; white-space: nowrap; box-shadow: 0 10px 20px rgba(0,0,0,0.5);}
+        #announcement { display: none; position: absolute; top: 20%; left: 50%; transform: translate(-50%, -50%); background: rgba(220,38,38,0.9); color: white; padding: 15px 40px; border-radius: 8px; z-index: 150; text-align: center; font-size: 30px; border: 4px solid #fca5a5; pointer-events: none; font-weight: bold; box-shadow: 0 10px 20px rgba(0,0,0,0.5); animation: dropIn 0.5s ease-out;}
+        
+        .lobby-box { background: rgba(0,0,0,0.5); padding: 30px; border-radius: 16px; text-align: center; }
+        .input-text { padding: 10px; font-size: 20px; border-radius: 8px; border: none; text-align: center; font-family: 'Jua'; width: 250px; margin-bottom: 10px; }
+        
+        .team-box { width: 300px; min-height: 200px; border-radius: 12px; padding: 15px; border: 4px solid transparent; }
+        .team-blue { background: rgba(59, 130, 246, 0.2); border-color: #3b82f6; }
+        .team-red { background: rgba(239, 68, 68, 0.2); border-color: #ef4444; }
+        .player-item { background: rgba(0,0,0,0.6); padding: 10px; margin: 5px 0; border-radius: 8px; color: white; display: flex; justify-content: space-between; align-items: center;}
+        .status-ready { color: #48bb78; font-weight: bold; }
+        .status-wait { color: #a0aec0; }
+
+        /* 기기별 화면 최적화 (모바일 지원) */
+        @media (max-width: 768px) {
+            #skill-zone { transform: scale(0.8); transform-origin: bottom right; bottom: 10px; right: 10px; gap: 10px; }
+            #joystick-zone { transform: scale(0.8); transform-origin: bottom left; bottom: 10px; left: 10px; }
+            #player-stats { transform: scale(0.8) translateX(-50%); transform-origin: bottom left; left: 50%; bottom: 10px; }
+            #scoreboard { font-size: 16px; padding: 5px 10px; gap: 10px; }
+            .score-numbers { font-size: 20px; }
+            #mission-banner { font-size: 18px; padding: 5px 15px; }
+            .hero-card { width: 140px; padding: 10px; }
+            .hero-icon { width: 50px; height: 50px; margin-bottom: 5px; }
+            .menu-btn { font-size: 20px; padding: 10px 20px; width: 220px; }
+            .team-box { width: 250px; min-height: 150px; }
+            #countdown-overlay { font-size: 80px; }
+        }
     </style>
 </head>
 <body>
 
-<div id="game-container">
-    <!-- Header: Status -->
-    <div class="pixel-border m-2 p-2 bg-[#222] shrink-0 z-10">
-        <div class="flex justify-between items-end mb-2 px-1">
-            <div class="relative text-center w-16">
-                <div class="text-[0.6rem] mb-1 text-gray-300" style="font-family: 'Press Start 2P';">LEVEL</div>
-                <div class="border-2 border-white p-1 relative bg-black">
-                    <span id="player-level" class="text-xl text-yellow-400">1</span>
+    <div id="start-screen" class="fullscreen-menu">
+        <h1 class="text-7xl text-yellow-400 mb-4 drop-shadow-2xl font-bold">MATH ARENA</h1>
+        <p class="text-2xl text-gray-300 mb-12">수학과 생존의 결투</p>
+        <button class="menu-btn mb-4" onclick="showMenu('single-player-menu')">싱글플레이</button>
+        <button class="menu-btn !bg-purple-600 !border-purple-800 hover:!bg-purple-700" onclick="showMenu('multiplayer-lobby')">멀티플레이 (PvP)</button>
+    </div>
+
+    <div id="single-player-menu" class="fullscreen-menu hidden-menu">
+        <button class="absolute top-5 left-5 bg-gray-700 text-white px-4 py-2 rounded-lg font-bold hover:bg-gray-600 transition" onclick="showMenu('start-screen')">⬅ 뒤로가기</button>
+        <h1 class="text-5xl text-yellow-400 mb-2 drop-shadow-lg mt-8">싱글플레이 설정</h1>
+        <div class="mode-selection mt-4">
+            <label class="mode-option"><input type="radio" name="spGameMode" value="domination" checked> 점령전 (5분)</label>
+            <label class="mode-option"><input type="radio" name="spGameMode" value="deathmatch"> 100킬전</label>
+        </div>
+        <div class="hero-cards" id="sp-hero-cards"></div>
+        <div class="mb-4 text-white text-xl">
+            <label for="player-nickname-sp" class="mr-2">내 이름:</label>
+            <input type="text" id="player-nickname-sp" maxlength="4" placeholder="최대 4자" class="text-black text-center w-24 p-1 rounded font-bold mr-4" value="용사">
+            <label for="bot-count" class="mr-2">적(봇) 수:</label>
+            <input type="number" id="bot-count" value="3" min="1" max="5" class="text-black text-center w-16 p-1 rounded font-bold">
+        </div>
+        <button class="menu-btn" onclick="startSinglePlayer()">레디 (게임 시작)</button>
+    </div>
+
+    <div id="multiplayer-lobby" class="fullscreen-menu hidden-menu">
+        <button class="absolute top-5 left-5 bg-gray-700 text-white px-4 py-2 rounded-lg font-bold" onclick="showMenu('start-screen')">⬅ 메인으로</button>
+        <h1 class="text-5xl text-yellow-400 mb-8 drop-shadow-lg">멀티플레이 로비</h1>
+        <div class="lobby-box">
+            <p class="text-xl text-white mb-2">닉네임 (최대 4자)</p>
+            <input type="text" id="player-nickname-mp" class="input-text" maxlength="4" placeholder="이름을 입력하세요" value="용사">
+            <div class="mt-8"><button class="menu-btn" onclick="createRoom()">새로운 방 만들기</button></div>
+            <div class="mt-8 border-t border-gray-500 pt-6">
+                <input type="text" id="join-room-id" class="input-text" placeholder="방 번호 입력"><br>
+                <button class="menu-btn !bg-green-600 !border-green-800" onclick="joinRoomBtn()">방 참가하기</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="multiplayer-room" class="fullscreen-menu hidden-menu">
+        <button class="absolute top-5 left-5 bg-red-600 text-white px-4 py-2 rounded-lg font-bold" onclick="leaveRoom()">나가기</button>
+        <h2 class="text-4xl text-white mb-4">방 번호: <span id="display-room-id" class="text-yellow-400 font-bold">0000</span></h2>
+        
+        <div class="mode-selection" id="mp-mode-selection">
+            <label class="mode-option"><input type="radio" name="mpGameMode" value="domination" checked onchange="updateRoomMode()"> 점령전</label>
+            <label class="mode-option"><input type="radio" name="mpGameMode" value="deathmatch" onchange="updateRoomMode()"> 100킬전</label>
+        </div>
+
+        <div class="flex gap-10 w-full max-w-4xl justify-center mb-4 flex-wrap">
+            <div class="team-box team-blue">
+                <h3 class="text-2xl text-blue-300 text-center mb-4 font-bold">블루팀</h3>
+                <div id="mp-blue-list"></div>
+                <button class="w-full mt-4 bg-blue-600 text-white py-2 rounded font-bold hover:bg-blue-500" onclick="switchTeam('blue')">블루팀 참가</button>
+            </div>
+            <div class="team-box team-red">
+                <h3 class="text-2xl text-red-300 text-center mb-4 font-bold">레드팀</h3>
+                <div id="mp-red-list"></div>
+                <button class="w-full mt-4 bg-red-600 text-white py-2 rounded font-bold hover:bg-red-500" onclick="switchTeam('red')">레드팀 참가</button>
+            </div>
+        </div>
+
+        <div class="hero-cards" id="mp-hero-cards" style="margin: 10px 0; transform: scale(0.8);"></div>
+        <div class="flex gap-4">
+            <button class="menu-btn !bg-gray-600" id="btn-mp-ready" onclick="toggleReady()">준비하기</button>
+            <button class="menu-btn" id="btn-mp-start" onclick="startMultiplayer()" disabled>게임 시작</button>
+        </div>
+        <p id="start-warning" class="text-red-400 mt-2 font-bold h-6"></p>
+    </div>
+
+    <!-- UI Overlays -->
+    <div id="modal">메시지</div>
+    <div id="announcement">📦 보급이 곧 투하됩니다!</div>
+    <div id="countdown-overlay">3</div>
+    <div id="kill-log-container"></div>
+
+    <div id="quiz-modal-container">
+        <div id="quiz-box">
+            <h2 class="text-yellow-400 text-3xl mb-4">📦 보급품 해제 중...</h2>
+            <p id="quiz-question" class="text-2xl mb-6">문제 텍스트</p>
+            <div id="quiz-options-container"></div>
+            <button class="mt-6 bg-red-500 px-6 py-2 rounded-lg text-white font-bold" onclick="closeQuiz()">포기하고 전투 복귀</button>
+        </div>
+    </div>
+
+    <div id="game-container">
+        <canvas id="gameCanvas"></canvas>
+        <div id="ui-layer">
+            <div id="top-bar">
+                <div id="scoreboard">
+                    <div class="score-team score-blue"><span>블루팀 K/D</span><span class="score-numbers"><span id="score-blue-kill">0</span> / <span id="score-blue-death">0</span></span></div>
+                    <div class="text-gray-400 text-3xl font-bold mt-2">VS</div>
+                    <div class="score-team score-red"><span>레드팀 K/D</span><span class="score-numbers"><span id="score-red-kill">0</span> / <span id="score-red-death">0</span></span></div>
+                </div>
+                
+                <div id="mission-banner">로딩 중...</div>
+                
+                <div id="domination-ui">
+                    <div class="text-xl font-bold text-yellow-300">⏳ 남은 시간: <span id="game-time">05:00</span></div>
+                    <div class="flex gap-4 mt-2">
+                        <div class="text-blue-400 dom-time">블루 점령: <span id="dom-blue">0</span>초</div>
+                        <div class="text-red-400 dom-time">레드 점령: <span id="dom-red">0</span>초</div>
+                    </div>
                 </div>
             </div>
             
-            <div class="flex-1 flex justify-around px-2 gap-1 text-sm">
-                <div class="border border-gray-600 rounded px-1 flex items-center bg-[#1a1a1d] flex-1 justify-center"><span>⚔️</span> <span id="player-atk" class="ml-1">15</span></div>
-                <div class="border border-gray-600 rounded px-1 flex items-center bg-[#1a1a1d] flex-1 justify-center"><span>🛡️</span> <span id="player-def" class="ml-1">5</span></div>
-                <div class="border border-gray-600 rounded px-1 flex items-center bg-[#1a1a1d] flex-1 justify-center"><span class="text-[var(--hp-red)]">❤️</span> <span id="player-hp" class="ml-1">100</span></div>
-                <div class="border border-gray-600 rounded px-1 flex items-center bg-[#1a1a1d] flex-1 justify-center"><span class="text-blue-400">💧</span> <span id="player-mp" class="ml-1">50</span></div>
-            </div>
-        </div>
-        <div class="text-right text-yellow-500 mb-1 px-1 flex justify-between items-center">
-            <span class="text-xs text-gray-400 font-bold tracking-widest text-shadow">수학 전사</span>
-            <span class="font-bold"><span id="player-gold">500</span> 🪙</span>
-        </div>
-        <div class="w-full h-3 bg-gray-800 border border-gray-600 relative">
-            <div id="exp-bar" class="h-full bg-[var(--exp-green)] transition-all duration-300" style="width: 0%;"></div>
-        </div>
-    </div>
-
-    <!-- Main Content Area -->
-    <div id="main-content" class="flex-1 overflow-hidden relative p-2">
-        
-        <!-- View: Quest & Town -->
-        <div id="view-quest" class="h-full flex flex-col hidden overflow-y-auto">
-            <div class="pixel-border p-4 mb-2 bg-[#1a1a1d] flex-shrink-0" id="quest-board">
-                <h3 class="text-lg text-yellow-400 mb-2 border-b border-gray-700 pb-1">📜 퀘스트 게시판</h3>
-                <div id="quest-content" class="text-sm text-gray-300 min-h-[80px] flex flex-col justify-center"></div>
-            </div>
-            <div class="pixel-border p-4 mb-2 bg-[#1a1a1d] flex-shrink-0">
-                <h3 class="text-lg text-yellow-400 mb-2 border-b border-gray-700 pb-1">🏡 마을 여관</h3>
-                <p class="text-gray-300 text-xs mb-3">안전한 마을입니다. 50G를 지불하고 체력과 마나를 완벽히 회복합니다.</p>
-                <button class="pixel-btn w-full py-2 bg-green-900" onclick="restInTown()">휴식하기 (50G)</button>
-            </div>
-            <div class="pixel-border p-3 flex-1 bg-[#1a1a1d] flex flex-col">
-                <h2 class="text-lg text-blue-400 text-shadow mb-2 border-b border-gray-700 w-full text-center pb-1">수학의 성채 (정복 업적)</h2>
-                <div id="achievements-list" class="w-full text-xs text-gray-300 flex flex-col gap-2 overflow-y-auto pt-1 px-1">
-                    <!-- Achievements will be populated here -->
+            <div id="joystick-zone"></div>
+            
+            <div id="player-stats">
+                <div class="bar-group">
+                    <div class="text-sm mb-1 text-green-400 font-bold">HP</div>
+                    <div class="hp-bar-container"><div id="ui-hp" class="hp-bar-fill"></div></div>
                 </div>
-            </div>
-        </div>
-
-        <!-- View: Battle & Dungeon -->
-        <div id="view-battle" class="h-full flex flex-col hidden">
-            <!-- 던전 선택 화면 -->
-            <div id="dungeon-select" class="h-full flex flex-col items-center overflow-y-auto space-y-3 pb-4">
-                <h2 class="text-xl text-yellow-400 text-shadow mb-2 mt-2 shrink-0">어디로 모험을 떠날까요?</h2>
-                <button class="pixel-btn w-[90%] py-3 text-base bg-green-900 flex flex-col items-center shrink-0" onclick="enterDungeon('초보자의 숲')"><span>🌲 초보자의 숲 <span class="text-xs text-gray-300">(Lv.1~3)</span></span><span class="text-[0.65rem] text-yellow-300 mt-1">[단원: 덧셈과 뺄셈]</span></button>
-                <button class="pixel-btn w-[90%] py-3 text-base bg-gray-700 flex flex-col items-center shrink-0" onclick="enterDungeon('고블린 동굴')"><span>🦇 고블린 동굴 <span class="text-xs text-gray-300">(Lv.4~6)</span></span><span class="text-[0.65rem] text-yellow-300 mt-1">[단원: 곱셈과 나눗셈]</span></button>
-                <button class="pixel-btn w-[90%] py-3 text-base bg-orange-900 flex flex-col items-center shrink-0" onclick="enterDungeon('오크 부락')"><span>🌋 오크 부락 <span class="text-xs text-gray-300">(Lv.7~9)</span></span><span class="text-[0.65rem] text-yellow-300 mt-1">[단원: 자연수의 혼합계산]</span></button>
-                <button class="pixel-btn w-[90%] py-3 text-base bg-purple-900 flex flex-col items-center shrink-0" onclick="enterDungeon('악마기사단')"><span>⚔️ 악마기사단 <span class="text-xs text-gray-300">(Lv.10~13)</span></span><span class="text-[0.65rem] text-yellow-300 mt-1">[단원: 최대공약수와 최소공배수]</span></button>
-                <button class="pixel-btn w-[90%] py-3 text-base bg-blue-900 flex flex-col items-center shrink-0" onclick="enterDungeon('뒤틀린 슬라임 부족')"><span>🌀 뒤틀린 슬라임 부족 <span class="text-xs text-gray-300">(Lv.14~18)</span></span><span class="text-[0.65rem] text-yellow-300 mt-1">[단원: 다각형의 넓이]</span></button>
-                <button class="pixel-btn w-[90%] py-4 text-lg boss-dungeon flex flex-col items-center shrink-0 relative overflow-hidden" onclick="enterDungeon('마왕성')"><div class="absolute inset-0 bg-red-600 opacity-20 animate-pulse pointer-events-none"></div><span class="text-red-300 font-bold tracking-widest text-shadow">🏰 마왕성 <span class="text-xs text-gray-400">(Lv.19~)</span></span><span class="text-[0.7rem] text-yellow-400 mt-1">[단원: 5학년 수학 종합]</span></button>
-            </div>
-
-            <!-- 던전 맵 화면 -->
-            <div id="dungeon-map-view" class="h-full flex flex-col hidden relative bg-[#0a0a0c]">
-                <div class="p-2 text-center text-gray-400 border-b border-gray-800 bg-[#111] z-20 shadow-md flex justify-between items-center px-4 shrink-0">
-                    <h3 id="map-dungeon-name" class="text-lg text-yellow-500 font-bold">던전 이름</h3>
-                    <button class="text-xs bg-red-900 px-3 py-1 rounded text-white border border-red-700" onclick="requestFlee()">도망치기</button>
+                <div class="bar-group">
+                    <div class="text-sm mb-1 text-orange-400 font-bold">궁극기</div>
+                    <div class="ult-bar-container"><div id="ui-ult" class="ult-bar-fill"></div></div>
                 </div>
-                <!-- 스크롤 영역 (flex-col 블록 속성 사용) -->
-                <div class="flex-1 relative overflow-y-auto overflow-x-hidden p-4 block" id="map-scroll-area">
-                    <svg id="map-lines" class="absolute top-0 left-0 w-full pointer-events-none z-0"></svg>
-                    <div id="map-nodes" class="flex flex-col gap-10 w-full z-10 pb-8 pt-10 relative"></div>
+                <div class="bar-group justify-center ml-4">
+                    <div class="text-sm text-yellow-400 font-bold" id="ui-buff">강화: 0단계</div>
                 </div>
             </div>
 
-            <!-- 이벤트 화면 -->
-            <div id="event-view" class="h-full flex flex-col hidden">
-                <div class="flex-1 pixel-border m-2 flex flex-col items-center justify-center p-4 bg-[#111]">
-                    <h2 id="event-title" class="text-2xl text-yellow-400 mb-6 text-shadow">이벤트</h2>
-                    <div class="text-6xl mb-6 animate-bounce" id="event-icon">🎁</div>
-                    <p id="event-desc" class="text-center text-gray-300 text-sm mb-8 leading-relaxed whitespace-pre-wrap">설명 텍스트</p>
-                    <div id="event-buttons" class="w-full flex flex-col gap-3 items-center">
-                        <button class="pixel-btn w-3/4 py-3 text-lg" id="event-action-btn" onclick="completeNode()">진행</button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 전투 화면 -->
-            <div id="battle-field" class="h-full flex flex-col hidden">
-                <div class="flex-1 pixel-border mb-2 relative flex flex-col items-center justify-center p-4 bg-[#111]" id="battle-scene-bg">
-                    <h2 id="monster-name" class="text-xl text-[var(--hp-red)] mb-1 text-shadow">슬라임</h2>
-                    <div id="monster-status" class="flex gap-1 justify-center mb-2 h-6 text-[0.6rem] font-bold"></div>
-                    <div class="w-32 h-32 flex items-center justify-center text-6xl mb-4 transition-transform duration-100" id="monster-sprite">💧</div>
-                    <div class="w-3/4 h-4 bg-gray-800 border-2 border-gray-600 relative">
-                        <div id="monster-hp-bar" class="h-full bg-[var(--hp-red)] w-full transition-all duration-200"></div>
-                        <div id="monster-hp-text" class="absolute inset-0 flex justify-center items-center text-xs text-white">50 / 50</div>
-                    </div>
-                </div>
-                
-                <div class="h-24 pixel-border p-2 overflow-y-auto text-sm text-gray-300 bg-black flex flex-col gap-1" id="battle-log"></div>
-                
-                <div class="grid grid-cols-2 gap-2 mt-2 shrink-0">
-                    <button class="pixel-btn py-2 text-sm bg-red-900" onclick="attack()">⚔️ 타격</button>
-                    <button class="pixel-btn py-2 text-sm bg-purple-900" onclick="openBattleSkill()">✨ 진리(마법)<span class="text-[0.6rem] block">MP 소모</span></button>
-                    <button class="pixel-btn py-2 text-sm bg-green-800" onclick="openBattleBag()">🎒 가방<span class="text-[0.6rem] block">포션 사용</span></button>
-                    <button class="pixel-btn py-2 text-sm bg-gray-600" onclick="requestFlee()">🏃 도망</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- View: Skills -->
-        <div id="view-skills" class="h-full flex flex-col hidden">
-            <div class="pixel-border p-3 mb-2 bg-[#2c2c2e] flex gap-4 h-32 shrink-0">
-                <div class="w-20 flex-shrink-0 flex items-center justify-center bg-[#1a1a1c] border border-gray-700 text-4xl" id="detail-icon">?</div>
-                <div class="flex-1 flex flex-col justify-between">
-                    <div>
-                        <div class="flex justify-between items-start">
-                            <h3 class="text-lg text-white" id="detail-name">스킬 선택</h3>
-                            <span class="text-xs" id="detail-type"></span>
-                        </div>
-                        <p class="text-[0.65rem] text-gray-400 mt-1 leading-tight" id="detail-desc">목록에서 스킬을 선택하세요.</p>
-                    </div>
-                    <button class="pixel-btn py-1 text-sm bg-yellow-600 disabled:opacity-50" id="btn-buy" onclick="buySkill()" disabled>
-                        <span id="detail-cost">0</span> 🪙 배우기
-                    </button>
-                </div>
-            </div>
-            <div class="flex-1 overflow-y-auto pr-1 flex flex-col gap-2" id="skill-list"></div>
-        </div>
-
-        <!-- View: Inventory -->
-        <div id="view-inventory" class="h-full flex flex-col hidden">
-            <div class="pixel-border p-2 mb-2 bg-[#1a1a1d]">
-                <h3 class="text-sm text-yellow-400 mb-2 text-center">장착 중인 장비</h3>
-                <div class="flex gap-8 justify-center">
-                    <div class="flex flex-col items-center">
-                        <div class="text-[0.6rem] text-gray-400 mb-1">무기</div>
-                        <div id="slot-weapon" class="item-slot w-14 h-14" onclick="openItemAction('equip', 'weapon')"></div>
-                    </div>
-                    <div class="flex flex-col items-center">
-                        <div class="text-[0.6rem] text-gray-400 mb-1">방어구</div>
-                        <div id="slot-armor" class="item-slot w-14 h-14" onclick="openItemAction('equip', 'armor')"></div>
-                    </div>
-                </div>
-            </div>
-            <div class="pixel-border p-2 mb-2 bg-[#1a1a1d] flex-shrink-0">
-                <div class="flex justify-between items-center mb-1">
-                    <h3 class="text-xs text-green-400">가방 (전투 중 사용가능)</h3>
-                    <span id="bag-count" class="text-xs text-gray-400">0/12</span>
-                </div>
-                <div id="inv-bag" class="grid grid-cols-6 gap-1 h-20 overflow-y-auto bg-black p-1"></div>
-            </div>
-            <div class="pixel-border p-2 flex-1 bg-[#1a1a1d] flex flex-col">
-                <div class="flex justify-between items-center mb-1">
-                    <h3 class="text-xs text-blue-400">창고 (마을 전용)</h3>
-                    <span id="stash-count" class="text-xs text-gray-400">0/24</span>
-                </div>
-                <div id="inv-stash" class="grid grid-cols-6 gap-1 flex-1 overflow-y-auto bg-black p-1 content-start"></div>
-            </div>
-        </div>
-
-        <!-- View: Shop -->
-        <div id="view-shop" class="h-full flex flex-col hidden">
-            <div class="flex gap-2 mb-2 shrink-0">
-                <button id="tab-buy" class="pixel-btn flex-1 py-2 text-sm bg-blue-900 border-yellow-500" onclick="renderShopList('buy')">구매 (장비/물약)</button>
-                <button id="tab-sell" class="pixel-btn flex-1 py-2 text-sm bg-[#333]" onclick="renderShopList('sell')">판매 (전리품)</button>
-            </div>
-            <div class="pixel-border p-2 flex-1 bg-[#1a1a1d] flex flex-col overflow-hidden">
-                <div class="flex justify-between items-center mb-2 border-b border-gray-700 pb-1 shrink-0">
-                    <span class="text-sm text-gray-300" id="shop-title">판매 물품</span>
-                </div>
-                <div id="shop-list" class="flex-1 overflow-y-auto flex flex-col gap-2 pr-1"></div>
+            <div id="skill-zone">
+                <div class="skill-btn" id="btn-mine" onpointerdown="toggleAim('mine'); event.stopPropagation();">지뢰<div id="badge-mine" class="item-badge">0</div></div>
+                <div class="skill-btn" id="btn-grenade" onpointerdown="toggleAim('grenade'); event.stopPropagation();">수류탄<div id="badge-grenade" class="item-badge">0</div></div>
+                <div class="skill-btn" id="btn-ult" onpointerdown="activateUlt(); event.stopPropagation();">궁</div>
+                <div class="skill-btn" id="btn-flash" onpointerdown="activateFlash(); event.stopPropagation();">점멸<span id="flash-cd-text" class="cooldown-overlay"></span></div>
             </div>
         </div>
     </div>
 
-    <!-- Modals -->
-    <div id="msg-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-[80] p-4">
-        <div class="pixel-border bg-[#1a1a1d] p-6 max-w-sm w-full text-center">
-            <p id="msg-text" class="text-base text-white mb-6 whitespace-pre-wrap leading-relaxed">메시지</p>
-            <button class="pixel-btn px-8 py-2 bg-blue-800" onclick="document.getElementById('msg-modal').classList.add('hidden')">확인</button>
-        </div>
-    </div>
-
-    <div id="confirm-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-[60] p-4">
-        <div class="pixel-border bg-[#1a1a1d] p-6 max-w-sm w-full text-center shadow-[0_0_20px_rgba(255,0,0,0.4)]">
-            <h3 class="text-red-500 text-lg mb-2">⚠️ 경고</h3>
-            <p id="confirm-text" class="text-sm text-gray-300 mb-6">던전 탐험 중입니다.<br>도망치시겠습니까?<br><span class="text-red-400 text-xs">(얻은 경험치 상실, 획득한 골드 유지)</span></p>
-            <div class="flex justify-center gap-4">
-                <button class="pixel-btn px-6 py-2 bg-red-800" onclick="executeFlee()">도망치기</button>
-                <button class="pixel-btn px-6 py-2 bg-gray-600" onclick="cancelSwitch()">계속 탐험</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="item-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-[70] p-4">
-        <div class="pixel-border bg-[#1a1a1d] p-4 max-w-xs w-full">
-            <div class="flex gap-4 items-start border-b border-gray-700 pb-3 mb-3">
-                <div class="w-16 h-16 bg-black border border-gray-600 flex items-center justify-center text-3xl shrink-0" id="modal-item-icon"></div>
-                <div>
-                    <h3 class="text-yellow-400 text-lg" id="modal-item-name">아이템</h3>
-                    <p class="text-[0.65rem] text-gray-400 mt-1 whitespace-pre-wrap leading-tight" id="modal-item-desc"></p>
-                </div>
-            </div>
-            <div class="flex flex-col gap-2" id="modal-item-actions"></div>
-            <button class="pixel-btn w-full py-2 mt-2 bg-gray-700" onclick="document.getElementById('item-modal').classList.add('hidden')">닫기</button>
-        </div>
-    </div>
-
-    <!-- Battle Skills Modal -->
-    <div id="battle-skill-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-[70] p-4">
-        <div class="pixel-border bg-[#1a1a1d] p-4 max-w-xs w-full">
-            <h3 class="text-purple-400 mb-3 text-center border-b border-gray-700 pb-2">사용할 진리(마법) 선택</h3>
-            <div id="battle-skill-list-container" class="flex flex-col gap-2 mb-4 max-h-60 overflow-y-auto"></div>
-            <button class="pixel-btn w-full py-2 bg-gray-600" onclick="document.getElementById('battle-skill-modal').classList.add('hidden')">취소</button>
-        </div>
-    </div>
-
-    <!-- Battle Bag Modal -->
-    <div id="battle-bag-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-[70] p-4">
-        <div class="pixel-border bg-[#1a1a1d] p-4 max-w-xs w-full">
-            <h3 class="text-green-400 mb-3 text-center border-b border-gray-700 pb-2">가방 (포션 사용)</h3>
-            <div id="battle-bag-list" class="grid grid-cols-4 gap-2 mb-4"></div>
-            <button class="pixel-btn w-full py-2 bg-gray-600" onclick="document.getElementById('battle-bag-modal').classList.add('hidden')">취소</button>
-        </div>
-    </div>
-
-    <!-- Math Quiz Modal -->
-    <div id="quiz-modal" class="hidden fixed inset-0 bg-black/95 flex items-center justify-center z-[75] p-4">
-        <div class="pixel-border bg-[#1a1a1d] p-6 max-w-sm w-full text-center flex flex-col items-center border-4 border-yellow-600">
-            <h2 class="text-xl text-yellow-400 mb-2 font-bold" id="quiz-title">비밀의 수학 퀴즈</h2>
-            <p class="text-xs text-gray-400 mb-6" id="quiz-desc">문제를 맞혀야만 진행할 수 있습니다.</p>
-            <div id="quiz-question" class="text-3xl text-white mb-8 math-font tracking-wider bg-black px-4 py-4 border border-gray-700 rounded shadow-inner w-full min-h-[80px] flex items-center justify-center whitespace-pre-wrap">3 + 5 = ?</div>
-            <div class="grid grid-cols-2 gap-4 w-full" id="quiz-options"></div>
-        </div>
-    </div>
-
-    <!-- Bottom Navigation -->
-    <div class="flex bg-[#111] border-t border-gray-700 h-16 shrink-0 z-50">
-        <div class="nav-btn active" data-target="view-quest" onclick="requestSwitchView('view-quest')"><span>🏘️</span><span class="nav-text">마을</span></div>
-        <div class="nav-btn" data-target="view-battle" onclick="requestSwitchView('view-battle')"><span>⚔️</span><span class="nav-text">모험</span></div>
-        <div class="nav-btn" data-target="view-skills" onclick="requestSwitchView('view-skills')"><span>📖</span><span class="nav-text">진리</span></div>
-        <div class="nav-btn" data-target="view-inventory" onclick="requestSwitchView('view-inventory')"><span>🎒</span><span class="nav-text">인벤토리</span></div>
-        <div class="nav-btn" data-target="view-shop" onclick="requestSwitchView('view-shop')"><span>🛒</span><span class="nav-text">상점</span></div>
-    </div>
-</div>
-
-<script>
-    let player = {
-        level: 1, exp: 0, maxExp: 100, hp: 100, maxHp: 100, mp: 50, maxMp: 50,
-        baseAtk: 15, baseDef: 5, gold: 500, skills: [],
-        inventory: { equip: { weapon: null, armor: null }, bag: [], stash: [] }, 
-        activeQuest: null,
-        achievements: { // 업적 추가
-            '초보자의 숲': 0, '고블린 동굴': 0, '오크 부락': 0, '악마기사단': 0, '뒤틀린 슬라임 부족': 0, '마왕성': 0
-        }
-    };
-
-    const itemDB = {
-        // 상점 무기
-        'w1': { id: 'w1', name: '낡은 검', type: 'weapon', atk: 5, def: 0, price: 150, icon: '🗡️', reqLevel: 1, desc: '가장 기본적인 검. (공격력 +5)' },
-        'w2': { id: 'w2', name: '초보자의 룬 창', type: 'weapon', atk: 8, def: 0, price: 500, icon: '🔱', reqLevel: 3, special: { type: 'crit', chance: 0.25, mult: 1.5 }, desc: '크리티컬: 25% 확률로 1.5배 피해. (공격력 +8)' },
-        'w3': { id: 'w3', name: '톱날 단검', type: 'weapon', atk: 12, def: 0, price: 1200, icon: '🔪', reqLevel: 5, special: { type: 'bleed', chance: 0.3, dmg: 5, turns: 3 }, desc: '출혈: 30% 확률로 매 턴 5의 지속 피해. (공격력 +12)' },
-        'w4': { id: 'w4', name: '불확실성의 지팡이', type: 'weapon', atk: 25, def: 0, price: 2500, icon: '🪄', reqLevel: 8, special: { type: 'rng', variance: 0.8 }, desc: '피해량 편차 80%. 운에 맡기세요! (공격력 +25)' },
-        'w5': { id: 'w5', name: '쌍검 [신루]', type: 'weapon', atk: 22, def: 0, price: 5000, icon: '⚔️', reqLevel: 12, special: { type: 'double', chance: 0.4 }, desc: '더블 어택: 40% 확률로 2회 연속 공격. (공격력 +22)' },
-        
-        // 던전 파밍 무기 (레벨 제한 X)
-        'd_w1': { id: 'd_w1', name: '고블린 뼈단검', type: 'weapon', atk: 15, def: 0, price: 600, icon: '🦴', isDrop: true, special: { type: 'bleed', chance: 0.4, dmg: 5, turns: 2 }, desc: '[파밍] 40% 확률로 출혈 유발. 레벨제한 없음. (공+15)' },
-        'd_w2': { id: 'd_w2', name: '오크의 파괴 망치', type: 'weapon', atk: 35, def: -5, price: 1500, icon: '🔨', isDrop: true, special: { type: 'rng', variance: 0.1 }, desc: '[파밍] 방어력 -5 감소, 안정적인 데미지. (공+35)' },
-        'd_w3': { id: 'd_w3', name: '마검 [바알제붑]', type: 'weapon', atk: 60, def: 0, price: 4000, icon: '🗡️', isDrop: true, special: { type: 'crit', chance: 0.4, mult: 2.0 }, desc: '[파밍/레어] 40% 확률로 2배 크리티컬. (공+60)' },
-        'd_w4': { id: 'd_w4', name: '기하학 큐브 코어', type: 'weapon', atk: 85, def: 0, price: 8000, icon: '🧊', isDrop: true, special: { type: 'paralyze', chance: 0.35 }, desc: '[파밍] 35% 확률로 적 마비. (공+85)' },
-
-        // 보스 전용 장비 및 드랍템
-        'b_w1': { id: 'b_w1', name: '슬로우 소드', type: 'weapon', atk: 10, def: 0, price: 0, icon: '🗡️', isBossDrop: true, special: { type: 'paralyze', chance: 0.4 }, desc: '[초보자의 숲 보스] 40% 확률로 1턴 스턴(마비). (공+10)' },
-        'b_m1': { id: 'b_m1', name: '대왕 슬라임 조각', type: 'material', price: 150, icon: '🦠', desc: '대왕 슬라임의 신체 일부. 상점에 판매할 수 있다.' },
-        'b_w2': { id: 'b_w2', name: '고블린 족장의 창', type: 'weapon', atk: 18, def: 0, price: 0, icon: '🔱', isBossDrop: true, special: { type: 'anti_goblin' }, desc: '[고블린 동굴 보스] 고블린 몬스터 무조건 즉사. (공+18)' },
-        'b_m2': { id: 'b_m2', name: '고블린 족장의 귀', type: 'material', price: 250, icon: '👂', desc: '고블린 족장의 증표.' },
-        'b_a1': { id: 'b_a1', name: '오크 전사의 갑옷', type: 'armor', atk: 0, def: 25, price: 0, icon: '🦺', isBossDrop: true, special: { type: 'heal_on_clear', heal: 20 }, desc: '[오크 부락 보스] 던전의 각 방 클리어 시 체력 20 회복. (방+25)' },
-        'b_m3': { id: 'b_m3', name: '오크 대족장의 목걸이', type: 'material', price: 500, icon: '📿', desc: '오크 대족장의 화려한 목걸이.' },
-        'b_w3': { id: 'b_w3', name: '기사단장의 창', type: 'weapon', atk: 20, def: 0, price: 0, icon: '🤺', isBossDrop: true, special: { type: 'double', chance: 1.0 }, desc: '[악마기사단 보스] 무조건 2연속 공격 발동. (공+20)' },
-        'b_m4': { id: 'b_m4', name: '기사단장의 투구', type: 'material', price: 1000, icon: '⛑️', desc: '타락한 기사단장의 투구.' },
-        'b_w4': { id: 'b_w4', name: '기하학 대법사의 지팡이', type: 'weapon', atk: 40, def: 0, price: 0, icon: '🪄', isBossDrop: true, special: { type: 'poison', chance: 0.5, dmg: 20, turns: 5 }, desc: '[슬라임 킹 보스] 50% 확률로 5턴간 중독(매턴 20피해). (공+40)' },
-        'b_p1': { id: 'b_p1', name: '뒤틀린 영약', type: 'consumable', healHp: 300, healMp: 0, price: 1500, icon: '🧪', isBossDrop: true, special: { type: 'buff_atk', amount: 20, turns: 5 }, desc: '[슬라임 킹 보스] 체력 300 회복 및 5턴간 공격력 +20 버프.' },
-
-        // 방어구 (상점)
-        'a1': { id: 'a1', name: '가죽 옷', type: 'armor', atk: 0, def: 3, price: 120, icon: '🦺', reqLevel: 1, desc: '허름한 가죽 옷. (방어력 +3)' },
-        'a2': { id: 'a2', name: '사슬 갑옷', type: 'armor', atk: 0, def: 8, price: 600, icon: '🛡️', reqLevel: 4, desc: '튼튼한 갑옷. (방어력 +8)' },
-        'a3': { id: 'a3', name: '강철 판금 갑옷', type: 'armor', atk: 0, def: 18, price: 2000, icon: '🦾', reqLevel: 8, desc: '강철로 만든 튼튼한 판금 갑옷. (방어력 +18)' },
-
-        // 소모품 및 재료
-        'p1': { id: 'p1', name: '초보자 포션', type: 'consumable', healHp: 50, healMp: 0, price: 50, icon: '🧪', reqLevel: 1, desc: '체력을 50 회복합니다.' },
-        'p2': { id: 'p2', name: '마나 물약', type: 'consumable', healHp: 0, healMp: 30, price: 80, icon: '🏺', reqLevel: 1, desc: '마나를 30 회복합니다.' },
-        'k1': { id: 'k1', name: '황금 열쇠', type: 'material', price: 150, icon: '🔑', reqLevel: 1, desc: '보물 상자를 안전하게 엽니다. (일회용)' },
-
-        // 일반 전리품
-        'm1': { id: 'm1', name: '슬라임 점액', type: 'material', price: 15, icon: '💧', desc: '상점에 팔아보자.' },
-        'm2': { id: 'm2', name: '고블린의 이빨', type: 'material', price: 30, icon: '🦷', desc: '고블린의 날카로운 이빨.' },
-        'm3': { id: 'm3', name: '오크의 뿔', type: 'material', price: 60, icon: '🦏', desc: '단단한 오크의 뿔.' },
-        'm4': { id: 'm4', name: '부서진 기사의 검', type: 'material', price: 100, icon: '🗡️', desc: '기사단이 사용하던 검 조각.' }
-    };
-
-    const skillDB = [
-        { id: 's1', name: "철벽 정리", type: "패시브", color: "text-blue-400", desc: "영구적으로 기본 방어력이 5 증가합니다.", cost: 1000, icon: "🛡️", reqLevel: 1, effect: () => { player.baseDef += 5; } },
-        { id: 's2', name: "바람의 함수", type: "마법(액티브)", color: "text-yellow-400", desc: "MP 20 소비. 강력한 단일 마법(공격력x2.5).", cost: 2000, icon: "💨", reqLevel: 5, effect: () => {} },
-        { id: 's3', name: "피타고라스 일격", type: "마법(액티브)", color: "text-red-400", desc: "MP 40 소비. 적의 방어를 무시하는 초강력 마법 피해(공격력x3).", cost: 5000, icon: "📐", reqLevel: 10, effect: () => {} },
-        { id: 's4', name: "방정식의 폭주", type: "마법(액티브)", color: "text-purple-400", desc: "MP 30 소비. 마력이 깃든 3연속 마법 타격.", cost: 8000, icon: "🔢", reqLevel: 12, effect: () => {} },
-        { id: 's5', name: "절대값 쉴드", type: "마법(액티브)", color: "text-green-400", desc: "MP 25 소비. 즉시 체력 100 회복 & 3턴간 방어력 +30.", cost: 12000, icon: "🔰", reqLevel: 15, effect: () => {} },
-        { id: 's6', name: "운석의 기하학", type: "마법(액티브)", color: "text-red-500", desc: "MP 80 소비. 거대한 메테오를 소환! 방어 무시 파멸적 피해(공격력x5).", cost: 30000, icon: "☄️", reqLevel: 18, effect: () => {} }
-    ];
-
-    const monsters = [
-        { name: "숫자 슬라임", level: 1, hp: 30, atk: 8, def: 2, exp: 12, gold: 15, sprite: '💧', drop: 'm1', dungeon: '초보자의 숲' },
-        { name: "숲 늑대", level: 2, hp: 45, atk: 12, def: 3, exp: 18, gold: 20, sprite: '🐺', drop: null, dungeon: '초보자의 숲' },
-        { name: "동굴 박쥐", level: 4, hp: 80, atk: 18, def: 5, exp: 35, gold: 35, sprite: '🦇', drop: null, dungeon: '고블린 동굴' },
-        { name: "연산 고블린", level: 5, hp: 110, atk: 22, def: 8, exp: 45, gold: 45, sprite: '👺', drop: 'm2', dungeon: '고블린 동굴' },
-        { name: "오크 전사", level: 7, hp: 180, atk: 35, def: 15, exp: 75, gold: 70, sprite: '👹', drop: 'm3', dungeon: '오크 부락' },
-        { name: "오크 주술사", level: 8, hp: 150, atk: 45, def: 10, exp: 85, gold: 80, sprite: '🧙‍♂️', drop: 'm3', dungeon: '오크 부락' },
-        { name: "타락한 기사", level: 10, hp: 300, atk: 55, def: 25, exp: 150, gold: 120, sprite: '🤺', drop: 'm4', dungeon: '악마기사단' },
-        // 4던전부터 물리 면역 몹 추가
-        { name: "흑마법사", level: 12, hp: 200, atk: 80, def: 15, exp: 200, gold: 150, sprite: '🦹', drop: 'm4', dungeon: '악마기사단', physicalImmune: true },
-        { name: "맹독 슬라임", level: 14, hp: 450, atk: 85, def: 35, exp: 280, gold: 200, sprite: '🤢', drop: 'm1', dungeon: '뒤틀린 슬라임 부족' },
-        { name: "큐브 슬라임", level: 16, hp: 400, atk: 100, def: 80, exp: 350, gold: 250, sprite: '🧊', drop: 'm1', dungeon: '뒤틀린 슬라임 부족', physicalImmune: true },
-        { name: "마왕의 호위무사", level: 19, hp: 800, atk: 150, def: 100, exp: 700, gold: 400, sprite: '🥷', drop: null, dungeon: '마왕성', physicalImmune: true }
-    ];
-
-    const bosses = {
-        '초보자의 숲': { name: "대왕 슬라임", hp: 150, atk: 20, def: 5, exp: 90, gold: 100, sprite: '🦠' },
-        '고블린 동굴': { name: "고블린 족장", hp: 350, atk: 40, def: 15, exp: 200, gold: 200, sprite: '🧌' },
-        '오크 부락': { name: "오크 대족장", hp: 600, atk: 70, def: 30, exp: 400, gold: 400, sprite: '🦍' },
-        '악마기사단': { name: "죽음의 기사단장", hp: 1200, atk: 110, def: 50, exp: 900, gold: 800, sprite: '🏇' },
-        '뒤틀린 슬라임 부족': { name: "기하학 슬라임 킹", hp: 2500, atk: 160, def: 80, exp: 1800, gold: 1500, sprite: '🌌' },
-        '마왕성': { name: "수학의 대마왕", hp: 6000, atk: 250, def: 100, exp: 4500, gold: 3000, sprite: '👿' }
-    };
-
-    const questDB = [
-        { id: 1, type: 'kill', target: '숫자 슬라임', count: 3, gold: 30, exp: 15, title: "기초 정리", desc: "숫자 슬라임 3마리 처치", reqLevel: 1 },
-        { id: 2, type: 'clear', target: '초보자의 숲', count: 1, gold: 80, exp: 50, title: "숲의 정화", desc: "초보자의 숲 보스 처치", reqLevel: 2 },
-        { id: 3, type: 'kill', target: '연산 고블린', count: 2, gold: 60, exp: 40, title: "고블린의 위협", desc: "연산 고블린 2마리 처치", reqLevel: 4 },
-        { id: 4, type: 'kill', target: '오크 전사', count: 2, gold: 120, exp: 80, title: "오크 토벌대", desc: "오크 전사 2마리 처치", reqLevel: 7 },
-        { id: 5, type: 'clear', target: '악마기사단', count: 1, gold: 500, exp: 250, title: "기사단의 몰락", desc: "기사단장 처치", reqLevel: 10 },
-        { id: 6, type: 'clear', target: '뒤틀린 슬라임 부족', count: 1, gold: 700, exp: 500, title: "도형의 붕괴", desc: "기하학 슬라임 킹 처치", reqLevel: 14 },
-        { id: 7, type: 'clear', target: '마왕성', count: 1, gold: 1500, exp: 1200, title: "수학의 구원자", desc: "수학의 대마왕 처치", reqLevel: 19 }
-    ];
-
-    let currentMonster = null, isBattling = false, currentDungeon = null, currentMapData = null, currentNodeId = null, clearedNodes = [], isBossBattle = false;
-    let dungeonGainedExp = 0, dungeonGainedGold = 0, pendingTargetView = null, quizCallback = null, selectedSkill = null;
-    let playerBattleStatus = { atkBuff: 0, atkBuffTurns: 0, defBuff: 0, defBuffTurns: 0 }; 
-
-    const nodeIcons = { 'start': '🚩', 'monster': '🦇', 'boss': '👹', 'treasure': '🎁', 'shrine': '⛲', 'empty': '🏕️' };
-    const els = {
-        level: document.getElementById('player-level'), atk: document.getElementById('player-atk'), def: document.getElementById('player-def'),
-        hp: document.getElementById('player-hp'), mp: document.getElementById('player-mp'), gold: document.getElementById('player-gold'),
-        expBar: document.getElementById('exp-bar'), log: document.getElementById('battle-log'), mName: document.getElementById('monster-name'),
-        mHpBar: document.getElementById('monster-hp-bar'), mHpText: document.getElementById('monster-hp-text'), mSprite: document.getElementById('monster-sprite')
-    };
-
-    function getTotalAtk() { return player.baseAtk + (player.inventory.equip.weapon ? itemDB[player.inventory.equip.weapon.id].atk : 0) + (playerBattleStatus.atkBuff > 0 ? playerBattleStatus.atkBuff : 0); }
-    function getTotalDef() { return player.baseDef + (player.inventory.equip.armor ? itemDB[player.inventory.equip.armor.id].def : 0) + (playerBattleStatus.defBuff > 0 ? playerBattleStatus.defBuff : 0); }
-    function showMsg(msg) { document.getElementById('msg-text').innerHTML = msg; document.getElementById('msg-modal').classList.remove('hidden'); }
-    function logMessage(msg, colorClass = "text-gray-300") { const div = document.createElement('div'); div.className = colorClass; div.innerHTML = msg; els.log.appendChild(div); els.log.scrollTop = els.log.scrollHeight; }
-    
-    function updateStats() {
-        // 안전 가드: 레벨 및 경험치가 이상하게 설정되는 것 방지
-        if (player.level < 1) player.level = 1;
-        player.exp = Math.max(0, player.exp);
-        
-        els.level.innerText = player.level; els.atk.innerText = getTotalAtk(); els.def.innerText = getTotalDef();
-        els.hp.innerText = Math.max(0, Math.floor(player.hp)); els.mp.innerText = Math.max(0, Math.floor(player.mp));
-        els.gold.innerText = player.gold.toLocaleString();
-        els.expBar.style.width = `${Math.min(100, (player.exp / player.maxExp) * 100)}%`;
-        renderInventory();
-    }
-
-    function requestSwitchView(viewId) {
-        try {
-            if(currentDungeon && viewId !== 'view-battle') { 
-                pendingTargetView = viewId; document.getElementById('confirm-modal').classList.remove('hidden'); return; 
-            }
-            forceSwitchView(viewId);
-        } catch (e) { console.error(e); } // 리셋 방지용 에러 캐치
-    }
-    
-    function forceSwitchView(viewId) {
-        document.querySelectorAll('#main-content > div[id^="view-"]').forEach(v => v.classList.add('hidden'));
-        document.getElementById(viewId).classList.remove('hidden');
-        document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
-        const targetBtn = document.querySelector(`.nav-btn[data-target="${viewId}"]`);
-        if(targetBtn) targetBtn.classList.add('active');
-        if(viewId === 'view-shop') renderShopList('buy');
-        if(viewId === 'view-quest') { refreshQuestBoard(); updateAchievementsUI(); }
-    }
-
-    function updateAchievementsUI() {
-        const list = document.getElementById('achievements-list');
-        if (!list) return;
-        list.innerHTML = '';
-        const dList = ['초보자의 숲', '고블린 동굴', '오크 부락', '악마기사단', '뒤틀린 슬라임 부족', '마왕성'];
-        dList.forEach(d => {
-            const count = player.achievements[d] || 0;
-            const div = document.createElement('div');
-            div.className = "flex justify-between items-center border-b border-gray-800 pb-1";
-            div.innerHTML = `<span>${d}</span> <span class="${count > 0 ? 'text-yellow-400 font-bold' : 'text-gray-600'}">${count}회 정복</span>`;
-            list.appendChild(div);
-        });
-    }
-
-    function generateMathProblem(dungeon) {
-        let q = "", a = 0;
-        if (dungeon === '마왕성') { const dList = ['초보자의 숲', '고블린 동굴', '오크 부락', '악마기사단', '뒤틀린 슬라임 부족']; dungeon = dList[Math.floor(Math.random() * dList.length)]; }
-
-        switch (dungeon) {
-            case '초보자의 숲': 
-                let n1 = Math.floor(Math.random() * 50) + 10; let n2 = Math.floor(Math.random() * 50) + 10;
-                if(Math.random() < 0.5) { q = `${n1} + ${n2}`; a = n1 + n2; } else { q = `${Math.max(n1,n2)} - ${Math.min(n1,n2)}`; a = Math.max(n1,n2) - Math.min(n1,n2); }
-                break;
-            case '고블린 동굴': 
-                if(Math.random() < 0.5) { let m1 = Math.floor(Math.random() * 89) + 10; let m2 = Math.floor(Math.random() * 8) + 2; q = `${m1} × ${m2}`; a = m1 * m2; }
-                else { let d2 = Math.floor(Math.random() * 8) + 2; let ans = Math.floor(Math.random() * 89) + 10; let d1 = d2 * ans; q = `${d1} ÷ ${d2}`; a = ans; }
-                break;
-            case '오크 부락': 
-                let type = Math.floor(Math.random() * 3); let o1 = Math.floor(Math.random() * 8) + 2; let o2 = Math.floor(Math.random() * 8) + 2; let o3 = Math.floor(Math.random() * 8) + 2;
-                if (type === 0) { q = `${o1} + ${o2} × ${o3}`; a = o1 + (o2 * o3); } else if (type === 1) { q = `(${o1} + ${o2}) × ${o3}`; a = (o1 + o2) * o3; } else { let prod = o1 * o2; let sub = Math.floor(Math.random() * (prod - 1)) + 1; q = `${o1} × ${o2} - ${sub}`; a = prod - sub; }
-                break;
-            case '악마기사단': 
-                if(Math.random() < 0.5) { const p = [[12,18,6], [24,36,12], [15,25,5], [14,21,7]][Math.floor(Math.random()*4)]; q = `${p[0]}와(과) ${p[1]}의\n최대공약수?`; a = p[2]; }
-                else { const p = [[4,6,12], [6,8,24], [3,5,15], [10,15,30]][Math.floor(Math.random()*4)]; q = `${p[0]}와(과) ${p[1]}의\n최소공배수?`; a = p[2]; }
-                break;
-            case '뒤틀린 슬라임 부족': 
-                let sType = Math.floor(Math.random() * 4); let base = Math.floor(Math.random() * 8) + 3; let height = Math.floor(Math.random() * 6) + 3;
-                if (sType === 0) { if ((base * height) % 2 !== 0) base++; q = `밑변 ${base}, 높이 ${height}\n삼각형 넓이?`; a = (base * height) / 2; }
-                else if (sType === 1) { q = `밑변 ${base}, 높이 ${height}\n평행사변형 넓이?`; a = base * height; }
-                else if (sType === 2) { if ((base * height) % 2 !== 0) base++; q = `두 대각선이 ${base}, ${height}\n마름모 넓이?`; a = (base * height) / 2; }
-                else { let top = Math.floor(Math.random() * 5) + 2; if (((base + top) * height) % 2 !== 0) height++; q = `윗변 ${top}, 아랫변 ${base},\n높이 ${height} 사다리꼴 넓이?`; a = ((base + top) * height) / 2; }
-                break;
-        }
-
-        let opts = [a];
-        while(opts.length < 4) { let offset = Math.floor(Math.random() * 11) - 5; if(offset === 0) offset = 2; let fake = a + offset; if(fake > 0 && !opts.includes(fake)) opts.push(fake); }
-        opts.sort(() => Math.random() - 0.5);
-        return { q: q + (q.includes('?') ? '' : ' = ?'), a: a, opts: opts };
-    }
-
-    function showQuizModal(dungeon, callback) {
-        const quiz = generateMathProblem(dungeon); quizCallback = callback;
-        document.getElementById('quiz-question').innerText = quiz.q;
-        const optContainer = document.getElementById('quiz-options'); optContainer.innerHTML = '';
-        quiz.opts.forEach(opt => {
-            const btn = document.createElement('button'); btn.className = "pixel-btn py-4 text-xl font-bold math-font bg-[#222]"; btn.innerText = opt;
-            btn.onclick = () => submitQuiz(opt === quiz.a); optContainer.appendChild(btn);
-        });
-        document.getElementById('quiz-modal').classList.remove('hidden');
-    }
-    function submitQuiz(isCorrect) { document.getElementById('quiz-modal').classList.add('hidden'); if(quizCallback) quizCallback(isCorrect); }
-
-    function generateMapPattern(dungeonName) {
-        const dungeonLengths = {
-            '초보자의 숲': 4,
-            '고블린 동굴': 5,
-            '오크 부락': 6,
-            '악마기사단': 7,
-            '뒤틀린 슬라임 부족': 8,
-            '마왕성': 10
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyCOXhtzOVGW4NtILMKqpV98iWU8g8gpSao",
+            authDomain: "matharena-a9fcd.firebaseapp.com",
+            databaseURL: "https://matharena-a9fcd-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "matharena-a9fcd",
+            storageBucket: "matharena-a9fcd.firebasestorage.app",
+            messagingSenderId: "286551796642",
+            appId: "1:286551796642:web:59b8bf0202f53f62a860fb"
         };
-        const floorsCount = dungeonLengths[dungeonName] || 4;
-        let floors = [];
-        let links = [];
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
 
-        floors.push([{id: 'boss', type: 'boss'}]);
-        let prevLayerIds = ['boss'];
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const uiHp = document.getElementById('ui-hp');
+        const uiUlt = document.getElementById('ui-ult');
+        const missionBanner = document.getElementById('mission-banner');
 
-        for (let i = floorsCount - 1; i >= 1; i--) {
-            let currentLayer = [];
-            let width = (i === floorsCount - 1 || i === 1) ? (Math.random() > 0.5 ? 2 : 1) : Math.floor(Math.random() * 2) + 2;
-            
-            for (let w = 0; w < width; w++) {
-                const types = ['monster', 'monster', 'treasure', 'shrine', 'empty'];
-                let type = Math.random() < 0.6 ? 'monster' : types[Math.floor(Math.random() * types.length)];
-                let id = `f${i}_${w}`;
-                currentLayer.push({id: id, type: type});
+        let viewWidth, viewHeight;
+        function resize() { viewWidth = window.innerWidth; viewHeight = window.innerHeight; canvas.width = viewWidth; canvas.height = viewHeight; }
+        window.addEventListener('resize', resize); resize();
+
+        const GAME_STATE = { MENU: 0, PLAYING: 1, GAME_OVER: 2 };
+        let currentState = GAME_STATE.MENU;
+        let isGameActive = false; // 카운트다운 완료 후 true
+        
+        let myUid = "uid_" + Math.random().toString(36).substr(2, 9);
+        let currentRoomId = null;
+        let isHost = false, isReady = false, myTeam = 'blue', isSinglePlayer = true;
+        let roomListener = null;
+        let animationFrameId = null; // 루프 관리용 변수
+
+        const MAP_WIDTH = 3200;
+        const MAP_HEIGHT = 2400;
+        let camera = { x: 0, y: 0 };
+        let selectedGameMode = 'domination';
+        let stats = { blue: { kills: 0, deaths: 0 }, red: { kills: 0, deaths: 0 } };
+        let gameTimeRemaining = 300; 
+        let domScores = { blue: 0, red: 0 };
+
+        let player;
+        let others = []; 
+        let remotePlayers = {}; 
+        let syncTimer = 0; 
+
+        let projectiles = [], meleeSlashes = [], orbs = [], containers = [];
+        let respawnZones = [], supplyCrates = [], explosives = [], heartPacks = [], activeRealms = [];
+        
+        let currentMission = null, lastTime = 0, activeQuizSource = null, aimingItem = null, airdropTimer = 10000;
+        let mouseX = 0, mouseY = 0, joystickManager = null, isJoystickActive = false;
+        const keys = {};
+
+        const HEROES = {
+            circle: { name: '원형 슈터', shape: 'circle', baseSpeed: 5, maxHp: 100, cooldown: 350, desc: '원거리 사격, 3초 물줄기 연사' },
+            square: { name: '네모 탱커', shape: 'square', baseSpeed: 4, maxHp: 150, cooldown: 600, desc: '주먹질(흡혈), 5초 광폭화 및 힐링오라' },
+            triangle: { name: '세모 닌자', shape: 'triangle', baseSpeed: 5.5, maxHp: 90, cooldown: 800, desc: '표창, 5초간 적을 결계에 가둠' },
+            hexagon: { name: '육각 검사', shape: 'hexagon', baseSpeed: 6.0, maxHp: 120, cooldown: 500, desc: '빠른 이속, 3초 순간이동 회전베기' }
+        };
+        let selectedHeroType = 'circle';
+        
+        const missions = [
+            { type: 'divisor', target: 16, text: "16의 약수를 모두 모아라!" },
+            { type: 'divisor', target: 24, text: "24의 약수를 모두 모아라!" },
+            { type: 'multiple', target: 5, text: "5의 배수를 찾아라!" },
+            { type: 'multiple', target: 7, text: "7의 배수를 찾아라!" }
+        ];
+
+        let modalTimeout = null;
+        function showModal(msg) {
+            const modal = document.getElementById('modal');
+            modal.innerText = msg;
+            modal.style.display = 'block';
+            if (modalTimeout) clearTimeout(modalTimeout);
+            modalTimeout = setTimeout(() => { modal.style.display = 'none'; }, 2500);
+        }
+
+        // --- 수정사항 1: 메뉴 표시 시 강제 상태 초기화 (방장 접속 불가 버그 원인 해결) ---
+        function showMenu(menuId) {
+            currentState = GAME_STATE.MENU; 
+            document.querySelectorAll('.fullscreen-menu').forEach(el => el.classList.add('hidden-menu'));
+            if(menuId) document.getElementById(menuId).classList.remove('hidden-menu');
+        }
+
+        function renderHeroCards(containerId, isMulti) {
+            const container = document.getElementById(containerId); container.innerHTML = '';
+            for (const [key, hero] of Object.entries(HEROES)) {
+                let div = document.createElement('div');
+                div.className = `hero-card ${key === selectedHeroType ? 'selected' : ''}`;
+                div.innerHTML = `<div class="hero-icon shape-${key}"></div><h3 class="text-xl text-yellow-300 mb-2">${hero.name}</h3><p class="text-xs text-gray-300">${hero.desc}</p>`;
+                div.onclick = () => {
+                    selectedHeroType = key; renderHeroCards(containerId, isMulti);
+                    if(isMulti && currentRoomId) db.ref(`rooms/${currentRoomId}/players/${myUid}`).update({ hero: key });
+                };
+                container.appendChild(div);
             }
-            floors.push(currentLayer);
+        }
+        renderHeroCards('sp-hero-cards', false); renderHeroCards('mp-hero-cards', true);
 
-            prevLayerIds.forEach(pId => {
-                let cId = currentLayer[Math.floor(Math.random() * currentLayer.length)].id;
-                links.push([cId, pId]); 
+        function createRoom() {
+            const name = document.getElementById('player-nickname-mp').value || '유저';
+            const roomId = Math.floor(1000 + Math.random() * 9000).toString(); 
+            db.ref('rooms/' + roomId).set({ status: 'waiting', mode: 'domination', host: myUid }).then(() => {
+                isHost = true; joinRoom(roomId, name);
             });
+        }
+
+        function joinRoomBtn() {
+            const roomId = document.getElementById('join-room-id').value;
+            const name = document.getElementById('player-nickname-mp').value || '유저';
+            if(!roomId) return showModal("방 번호를 입력하세요!");
+            db.ref('rooms/' + roomId).once('value', snapshot => {
+                if(snapshot.exists()) { isHost = (snapshot.val().host === myUid); joinRoom(roomId, name); } 
+                else showModal("존재하지 않는 방입니다.");
+            });
+        }
+
+        function joinRoom(roomId, name) {
+            currentRoomId = roomId; myTeam = 'blue'; isReady = false; isSinglePlayer = false;
+            const playerRef = db.ref(`rooms/${roomId}/players/${myUid}`);
+            playerRef.onDisconnect().remove();
+            playerRef.set({ name: name, team: myTeam, hero: selectedHeroType, isReady: false });
+            document.getElementById('display-room-id').innerText = roomId; showMenu('multiplayer-room');
+            document.querySelectorAll('input[name="mpGameMode"]').forEach(el => el.disabled = !isHost);
             
-            currentLayer.forEach(c => {
-                let hasLink = links.some(l => l[0] === c.id);
-                if (!hasLink) {
-                    let pId = prevLayerIds[Math.floor(Math.random() * prevLayerIds.length)];
-                    links.push([c.id, pId]);
+            roomListener = db.ref('rooms/' + roomId).on('value', snapshot => {
+                const data = snapshot.val();
+                if(!data) { leaveRoom(); return showModal("방이 사라졌습니다."); }
+                
+                if(data.status === 'playing' && currentState === GAME_STATE.MENU) enterIngame(data.mode, data.players);
+                
+                if(currentState === GAME_STATE.PLAYING && data.players) {
+                    for(let uid in data.players) {
+                        if(uid === myUid) continue; 
+                        let pData = data.players[uid]; let p = remotePlayers[uid];
+                        if(p && !p.isDeadProcessed) { 
+                            if (pData.x !== undefined) p.targetX = pData.x;
+                            if (pData.y !== undefined) p.targetY = pData.y;
+                            if (pData.facingAngle !== undefined) p.facingAngle = pData.facingAngle;
+                            if (pData.hp !== undefined) p.hp = pData.hp;
+                            // 추가: 시각적 완벽 동기화를 위해 타이머도 연동
+                            if (pData.ult !== undefined) p.ultActiveTimer = pData.ult;
+                            if (pData.buff !== undefined) p.buffStacks = pData.buff;
+                            if (pData.inv !== undefined) p.invincibleTimer = pData.inv;
+                        }
+                    }
+                }
+
+                if(currentState === GAME_STATE.MENU) {
+                    if(data.mode) document.querySelector(`input[name="mpGameMode"][value="${data.mode}"]`).checked = true;
+                    updateRoomUI(data.players || {});
+                }
+            });
+        }
+
+        function updateRoomUI(players) {
+            const blueList = document.getElementById('mp-blue-list'); const redList = document.getElementById('mp-red-list');
+            blueList.innerHTML = ''; redList.innerHTML = '';
+            let bCount = 0, rCount = 0, allReady = true, total = 0;
+            for (const [uid, p] of Object.entries(players)) {
+                total++; const isMe = uid === myUid;
+                const statusHtml = p.isReady ? `<span class="status-ready">완료</span>` : `<span class="status-wait">대기중</span>`;
+                const item = document.createElement('div'); item.className = 'player-item';
+                item.innerHTML = `<span>${isMe ? '⭐' : ''} ${p.name} (${HEROES[p.hero].name})</span> ${statusHtml}`;
+                if (p.team === 'blue') { blueList.appendChild(item); bCount++; } else { redList.appendChild(item); rCount++; }
+                if (!p.isReady) allReady = false;
+            }
+            const btnStart = document.getElementById('btn-mp-start'); const warning = document.getElementById('start-warning');
+            if (!isHost) { btnStart.style.display = 'none'; warning.innerText = "방장이 시작할 때까지 기다려주세요."; } 
+            else {
+                btnStart.style.display = 'block';
+                if (total === 0) btnStart.disabled = true;
+                else if (bCount !== rCount) { btnStart.disabled = true; warning.innerText = "양 팀의 인원수가 같아야 합니다."; } 
+                else if (!allReady) { btnStart.disabled = true; warning.innerText = "모든 플레이어가 준비해야 합니다."; } 
+                else { btnStart.disabled = false; warning.innerText = "조건 만족! 게임을 시작할 수 있습니다."; warning.className = "text-green-400 mt-2 font-bold h-6"; }
+            }
+        }
+
+        function switchTeam(team) {
+            if(!currentRoomId) return; myTeam = team; isReady = false;
+            document.getElementById('btn-mp-ready').innerText = "준비하기"; document.getElementById('btn-mp-ready').classList.remove('!bg-green-600');
+            db.ref(`rooms/${currentRoomId}/players/${myUid}`).update({ team: team, isReady: false });
+        }
+
+        function toggleReady() {
+            if(!currentRoomId) return; isReady = !isReady;
+            const btn = document.getElementById('btn-mp-ready');
+            if(isReady) { btn.innerText = "준비 취소"; btn.classList.add('!bg-green-600'); } else { btn.innerText = "준비하기"; btn.classList.remove('!bg-green-600'); }
+            db.ref(`rooms/${currentRoomId}/players/${myUid}`).update({ isReady: isReady });
+        }
+
+        function updateRoomMode() { if(isHost && currentRoomId) db.ref('rooms/' + currentRoomId).update({ mode: document.querySelector('input[name="mpGameMode"]:checked').value }); }
+        
+        function leaveRoom() {
+            if(currentRoomId) { db.ref(`rooms/${currentRoomId}/players/${myUid}`).remove(); if(roomListener) db.ref('rooms/' + currentRoomId).off('value', roomListener); currentRoomId = null; isHost = false; }
+            showMenu('multiplayer-lobby');
+        }
+
+        // --- 수정사항 2: 원자적 데이터 업데이트로 방장 멀티 시작 동기화 보장 ---
+        function startMultiplayer() { 
+            if(isHost && currentRoomId) {
+                db.ref('rooms/' + currentRoomId).update({ 
+                    status: 'playing',
+                    events: null
+                }); 
+            }
+        }
+
+        function startSinglePlayer() {
+            isSinglePlayer = true;
+            let botCount = parseInt(document.getElementById('bot-count').value) || 3;
+            let myName = document.getElementById('player-nickname-sp').value || '용사';
+            let pData = { [myUid]: { team: 'blue', hero: selectedHeroType, name: myName } };
+            const types = ['circle', 'square', 'triangle', 'hexagon'];
+            for(let i=0; i<botCount; i++) pData['bot_'+i] = { team: 'red', hero: types[Math.floor(Math.random()*types.length)], isBot: true, name: '봇'+(i+1) };
+            enterIngame(document.querySelector('input[name="spGameMode"]:checked').value, pData);
+        }
+
+        function triggerNewMissionSync() {
+            let idx = Math.floor(Math.random() * missions.length);
+            let currentMissionTemp = missions[idx]; let correctAnswers = [];
+            if (currentMissionTemp.type === 'divisor') { for(let i=1; i<=currentMissionTemp.target; i++) { if(currentMissionTemp.target % i === 0) correctAnswers.push(i); } } 
+            else { for(let i=1; i<=6; i++) correctAnswers.push(currentMissionTemp.target * i); }
+
+            let newOrbs = [];
+            for (let i = 0; i < 20; i++) { 
+                let x, y, valid = false, attempts = 0;
+                while (!valid && attempts < 50) {
+                    x = Math.random() * (MAP_WIDTH - 200) + 100; y = Math.random() * (MAP_HEIGHT - 200) + 100; valid = true;
+                    for (let c of containers) { if (x > c.x - 20 && x < c.x + c.w + 20 && y > c.y - 20 && y < c.y + c.h + 20) { valid = false; break; } }
+                    attempts++;
+                }
+                if (valid) newOrbs.push({ x: x, y: y, number: (i < 6) ? correctAnswers[Math.floor(Math.random() * correctAnswers.length)] : Math.floor(Math.random() * 30) + 1, id: 'orb_' + i + '_' + Date.now() }); 
+            }
+            db.ref(`rooms/${currentRoomId}/events/mission`).set({ index: idx, orbs: newOrbs });
+        }
+
+        function enterIngame(mode, playersData) {
+            selectedGameMode = mode; showMenu(null); document.getElementById('game-container').style.display = 'block';
+
+            if(selectedGameMode === 'domination') { document.getElementById('domination-ui').style.display = 'flex'; gameTimeRemaining = 300; domScores = {blue:0, red:0}; } 
+            else { document.getElementById('domination-ui').style.display = 'none'; }
+
+            initMap(); projectiles = []; meleeSlashes = []; orbs = []; supplyCrates = []; explosives = []; heartPacks = []; activeRealms = [];
+            stats = { blue: { kills: 0, deaths: 0 }, red: { kills: 0, deaths: 0 } }; others = []; remotePlayers = {}; 
+            isGameActive = false;
+
+            for (const [uid, pData] of Object.entries(playersData || {})) {
+                if (uid === myUid) { player = new Player(pData.team, false, pData.hero, pData.name || '유저'); myTeam = pData.team; } 
+                else { 
+                    let newP = new Player(pData.team, pData.isBot || false, pData.hero, pData.name);
+                    if (!isSinglePlayer && !pData.isBot) { newP.isRemote = true; remotePlayers[uid] = newP; }
+                    others.push(newP); 
+                }
+            }
+            
+            updateUI(); setupControls(); 
+            
+            if (isSinglePlayer) startNewMission();
+            else { 
+                setupMultiplayerListeners(); 
+                // 수정: 레이스 컨디션 완벽 차단을 위해 여유 있게 전송
+                if (isHost) setTimeout(() => triggerNewMissionSync(), 500); 
+            }
+
+            startCountdown(() => { isGameActive = true; });
+
+            currentState = GAME_STATE.PLAYING; lastTime = performance.now(); syncTimer = 0; 
+            
+            if (animationFrameId) cancelAnimationFrame(animationFrameId); 
+            animationFrameId = requestAnimationFrame(gameLoop);
+        }
+
+        function startCountdown(callback) {
+            const overlay = document.getElementById('countdown-overlay');
+            overlay.style.display = 'flex';
+            let count = 3;
+            overlay.innerText = count;
+            
+            const interval = setInterval(() => {
+                count--;
+                if (count > 0) {
+                    overlay.innerText = count;
+                } else if (count === 0) {
+                    overlay.innerText = 'START!';
+                } else {
+                    clearInterval(interval);
+                    overlay.style.display = 'none';
+                    callback();
+                }
+            }, 1000);
+        }
+
+        function setupMultiplayerListeners() {
+            const eventsRef = db.ref(`rooms/${currentRoomId}/events`);
+            
+            eventsRef.child('killLogs').on('child_added', snap => {
+                const data = snap.val();
+                displayKillLog(data.killerName, data.killerTeam, data.victimName, data.victimTeam);
+                
+                if (data.victimTeam === 'blue') { stats.blue.deaths++; stats.red.kills++; } 
+                else { stats.red.deaths++; stats.blue.kills++; }
+                
+                document.getElementById('score-blue-kill').innerText = stats.blue.kills; document.getElementById('score-blue-death').innerText = stats.blue.deaths;
+                document.getElementById('score-red-kill').innerText = stats.red.kills; document.getElementById('score-red-death').innerText = stats.red.deaths;
+
+                if (data.victimUid === myUid) {
+                    showModal("사망! 3초 후 리스폰됩니다."); closeQuiz();
+                    player.hp = 0; player.x = -1000; player.targetX = -1000; player.isDeadProcessed = true;
+                    if(player.realm) { player.realm.active = false; player.realm = null; }
+                    setTimeout(() => { player.spawn(); updateUI(); }, 3000); updateUI();
+                } else {
+                    let deadP = remotePlayers[data.victimUid] || others.find(b => b.name === data.victimName);
+                    if (deadP) {
+                        deadP.hp = 0; deadP.x = -1000; deadP.targetX = -1000; deadP.isDeadProcessed = true;
+                        if(deadP.realm) { deadP.realm.active = false; deadP.realm = null; }
+                        if (isHost && deadP.isBot) setTimeout(() => { deadP.spawn(); }, 3000);
+                    }
+                }
+                
+                if(data.killerName === player.name && data.victimTeam !== player.team) showModal("적을 처치했습니다!");
+                checkGameEnd();
+            });
+
+            eventsRef.child('attacks').on('child_added', snap => {
+                const data = snap.val(); if(data.uid === myUid) return;
+                const p = remotePlayers[data.uid];
+                if(p && !p.isDeadProcessed) p.fireProjectile(data.twX, data.twY);
+            });
+
+            eventsRef.child('supplyCrates').on('child_added', snap => {
+                const data = snap.val(); supplyCrates.push(new SupplyCrate(data.x, data.y, data.id));
+                showAnnouncement("📦 보급이 투하되었습니다!");
+            });
+
+            eventsRef.child('mission').on('value', snap => {
+                const data = snap.val(); if(!data) return;
+                currentMission = missions[data.index];
+                missionBanner.innerText = currentMission.text;
+                missionBanner.classList.add('mission-pop'); setTimeout(() => missionBanner.classList.remove('mission-pop'), 300);
+                orbs = data.orbs ? data.orbs.map(o => new ResourceOrb(o.x, o.y, o.number, o.id)) : [];
+            });
+            eventsRef.child('orbEaten').on('child_added', snap => {
+                const eatenId = snap.val(); orbs = orbs.filter(o => o.id !== eatenId);
+            });
+        }
+
+        function displayKillLog(kName, kTeam, vName, vTeam) {
+            const container = document.getElementById('kill-log-container');
+            const el = document.createElement('div'); el.className = 'kill-log-item';
+            const kColor = kTeam === 'blue' ? '#60a5fa' : '#f87171';
+            const vColor = vTeam === 'blue' ? '#60a5fa' : '#f87171';
+            el.innerHTML = `<span style="color:${kColor}; font-weight:bold;">${kName}</span> ⚔️ <span style="color:${vColor}; font-weight:bold;">${vName}</span>`;
+            container.appendChild(el);
+            setTimeout(() => { if(container.contains(el)) container.removeChild(el); }, 4500);
+        }
+
+        class DominationPoint {
+            constructor() { this.x = 1600; this.y = 1200; this.radius = 250; this.owner = null; this.capturingTeam = null; this.captureProgress = 0; this.maxProgress = 3; }
+            update(dt) {
+                if(selectedGameMode !== 'domination') return;
+                let bCount = 0, rCount = 0;
+                for(let t of [player, ...others]) {
+                    if(t && t.hp > 0 && Math.hypot(t.x - this.x, t.y - this.y) < this.radius) { if(t.team === 'blue') bCount++; else rCount++; }
+                }
+                let dominant = null;
+                if(bCount > 0 && rCount === 0) dominant = 'blue'; else if(rCount > 0 && bCount === 0) dominant = 'red';
+
+                if(dominant) {
+                    if(this.capturingTeam !== dominant) { this.capturingTeam = dominant; this.captureProgress = 0; }
+                    if(this.owner !== dominant) {
+                        this.captureProgress += dt / 1000;
+                        if(this.captureProgress >= this.maxProgress) { this.owner = dominant; this.captureProgress = 0; showAnnouncement(dominant === 'blue' ? "블루팀 거점 점령!" : "레드팀 거점 점령!"); }
+                    }
+                } else { this.capturingTeam = null; this.captureProgress = Math.max(0, this.captureProgress - dt/1000); }
+
+                if(this.owner) domScores[this.owner] += dt / 1000;
+            }
+            draw(ctx) {
+                if(selectedGameMode !== 'domination') return;
+                ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI*2);
+                let color = 'rgba(156, 163, 175, 0.2)';
+                if(this.owner === 'blue') color = 'rgba(59, 130, 246, 0.3)'; else if(this.owner === 'red') color = 'rgba(239, 68, 68, 0.3)';
+                ctx.fillStyle = color; ctx.fill();
+                ctx.strokeStyle = this.owner === 'blue' ? '#3b82f6' : (this.owner === 'red' ? '#ef4444' : '#9ca3af');
+                ctx.lineWidth = 6; ctx.stroke();
+                
+                if(this.capturingTeam && this.owner !== this.capturingTeam) {
+                    ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, -Math.PI/2, -Math.PI/2 + (this.captureProgress/this.maxProgress)*Math.PI*2);
+                    ctx.strokeStyle = this.capturingTeam === 'blue' ? '#60a5fa' : '#f87171'; ctx.lineWidth = 12; ctx.stroke();
+                }
+                ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.font = '30px Jua'; ctx.textAlign = 'center'; ctx.fillText(this.owner ? (this.owner==='blue'?"블루팀 점령중":"레드팀 점령중") : "거점 (비어있음)", this.x, this.y);
+            }
+        }
+        let domPoint = new DominationPoint();
+
+        class Container {
+            constructor(x, y, w, h, color) { this.x = x; this.y = y; this.w = w; this.h = h; this.color = color; this.searched = false; this.failedTeams = []; this.generateQuiz(); }
+            generateQuiz() {
+                let w = Math.floor(Math.random() * 15) + 5; let h = Math.floor(Math.random() * 15) + 5; let ansNum = w * h;
+                let options = [ `${ansNum}cm²`, `${ansNum + 10}cm²`, `${w*2 + h*2}cm²`, `${ansNum - Math.min(10, ansNum-1)}cm²` ];
+                options = [...new Set(options)]; while(options.length < 4) { options.push(`${ansNum + Math.floor(Math.random()*20)+1}cm²`); options = [...new Set(options)]; }
+                options.sort(() => Math.random() - 0.5);
+                this.quiz = { question: `가로 ${w}cm, 세로 ${h}cm 직사각형 넓이는?`, answer: `${ansNum}cm²`, options: options, type: 'container' };
+            }
+            draw(ctx) {
+                ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.fillRect(this.x + 8, this.y + 8, this.w, this.h);
+                ctx.fillStyle = this.color; ctx.fillRect(this.x, this.y, this.w, this.h);
+                for (let i = 12; i < this.w; i += 24) { ctx.strokeStyle = 'rgba(0,0,0,0.3)'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(this.x + i, this.y); ctx.lineTo(this.x + i, this.y + this.h); ctx.stroke(); ctx.strokeStyle = 'rgba(255,255,255,0.15)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(this.x + i + 3, this.y); ctx.lineTo(this.x + i + 3, this.y + this.h); ctx.stroke(); }
+                ctx.strokeStyle = '#1f2937'; ctx.lineWidth = 5; ctx.strokeRect(this.x, this.y, this.w, this.h);
+                ctx.fillStyle = '#111827'; let cw = 14; ctx.fillRect(this.x - 2, this.y - 2, cw, cw); ctx.fillRect(this.x + this.w - cw + 2, this.y - 2, cw, cw); ctx.fillRect(this.x - 2, this.y + this.h - cw + 2, cw, cw); ctx.fillRect(this.x + this.w - cw + 2, this.y + this.h - cw + 2, cw, cw);
+            }
+        }
+
+        class RespawnZone {
+            constructor(x, y, w, h, team) { this.x = x; this.y = y; this.w = w; this.h = h; this.team = team; }
+            draw(ctx) {
+                ctx.fillStyle = this.team === 'blue' ? 'rgba(59, 130, 246, 0.15)' : 'rgba(239, 68, 68, 0.15)'; ctx.fillRect(this.x, this.y, this.w, this.h);
+                ctx.strokeStyle = this.team === 'blue' ? 'rgba(59, 130, 246, 0.6)' : 'rgba(239, 68, 68, 0.6)'; ctx.setLineDash([10, 10]); ctx.lineWidth = 3; ctx.strokeRect(this.x, this.y, this.w, this.h); ctx.setLineDash([]);
+                ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.font = '30px Jua'; ctx.textAlign = 'center'; ctx.fillText(this.team === 'blue' ? 'BLUE BASE' : 'RED BASE', this.x + this.w/2, this.y + this.h/2);
+            }
+        }
+
+        class ResourceOrb {
+            constructor(x, y, number, id) { this.x = x; this.y = y; this.radius = 16; this.number = number; this.id = id || ('orb_'+Math.random()); this.spawnTime = Date.now(); }
+            draw(ctx) {
+                const yOff = Math.sin((Date.now() - this.spawnTime) / 200) * 4;
+                ctx.beginPath(); ctx.arc(this.x, this.y + yOff, this.radius, 0, Math.PI * 2); ctx.fillStyle = '#fbbf24'; ctx.fill(); ctx.strokeStyle = '#b45309'; ctx.lineWidth = 3; ctx.stroke();
+                ctx.fillStyle = '#000'; ctx.font = 'bold 18px Jua'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(this.number, this.x, this.y + yOff);
+            }
+        }
+
+        class HeartPack {
+            constructor(x, y) { this.x = x; this.y = y; this.radius = 16; this.spawnTime = Date.now(); }
+            draw(ctx) {
+                const yOff = Math.sin((Date.now() - this.spawnTime) / 200) * 5;
+                ctx.beginPath(); ctx.arc(this.x, this.y + yOff, this.radius+4, 0, Math.PI * 2); ctx.fillStyle = '#fff'; ctx.fill(); ctx.strokeStyle = '#e5e7eb'; ctx.lineWidth = 2; ctx.stroke();
+                ctx.fillStyle = '#ef4444'; ctx.fillRect(this.x - 4, this.y + yOff - 12, 8, 24); ctx.fillRect(this.x - 12, this.y + yOff - 4, 24, 8);
+            }
+        }
+
+        class SupplyCrate {
+            constructor(x, y, id) { this.x = x; this.y = y; this.radius = 40; this.id = id || ('crate_'+Date.now()); this.active = true; this.failedTeams = []; this.dropZ = 1200; this.generateQuiz(); }
+            update(dt) { if (this.dropZ > 0) this.dropZ = Math.max(0, this.dropZ - dt * 1.8); }
+            generateQuiz() {
+                let a = Math.floor(Math.random()*15)+10; let b = Math.floor(Math.random()*15)+10; let c = Math.floor(Math.random()*5)+2; let ans = (a+b)*c;
+                let options = [ ans.toString(), (ans+10).toString(), (ans-10).toString(), (ans+5).toString() ]; options.sort(() => Math.random() - 0.5);
+                this.quiz = { question: `(${a} + ${b}) × ${c} = ?`, answer: ans.toString(), options: options, type: 'crate' };
+            }
+            draw(ctx) {
+                if(!this.active) return;
+                ctx.fillStyle = 'rgba(0,0,0,0.5)'; let s = this.dropZ > 0 ? Math.max(0.1, 1 - (this.dropZ/1200)) : 1;
+                ctx.beginPath(); ctx.ellipse(this.x, this.y + 20, 40 * s, 20 * s, 0, 0, Math.PI*2); ctx.fill();
+                let drawY = this.y - this.dropZ; let ds = this.dropZ > 0 ? 1 + (this.dropZ/800) : 1; let w = 60 * ds;
+                ctx.save(); ctx.translate(this.x, drawY); 
+                if (this.dropZ > 0) {
+                    ctx.strokeStyle = '#fff'; ctx.lineWidth = 2 * ds;
+                    ctx.beginPath(); ctx.moveTo(-w/2, -w/2); ctx.lineTo(-w, -w*1.5); ctx.stroke();
+                    ctx.beginPath(); ctx.moveTo(w/2, -w/2); ctx.lineTo(w, -w*1.5); ctx.stroke();
+                    ctx.beginPath(); ctx.moveTo(0, -w/2); ctx.lineTo(0, -w*1.5); ctx.stroke();
+                    ctx.fillStyle = '#ef4444'; ctx.beginPath(); ctx.arc(0, -w*1.5, w*1.2, Math.PI, 0); ctx.fill();
+                }
+                ctx.fillStyle = '#10b981'; ctx.fillRect(-w/2, -w/2, w, w); 
+                ctx.fillStyle = '#f3f4f6'; ctx.fillRect(-w/2, -w*0.15, w, w*0.3); ctx.fillRect(-w*0.15, -w/2, w*0.3, w); 
+                ctx.fillStyle = '#fbbf24'; ctx.beginPath(); ctx.arc(0, 0, w*0.2, 0, Math.PI*2); ctx.fill();
+                ctx.strokeStyle = '#047857'; ctx.lineWidth = 4 * ds; ctx.strokeRect(-w/2, -w/2, w, w); 
+                ctx.restore();
+            }
+        }
+
+        class Realm {
+            constructor(ninja, target) {
+                this.x = (ninja.x + target.x) / 2; this.y = (ninja.y + target.y) / 2; this.radius = 350;
+                this.ninja = ninja; this.target = target; this.timer = 5000; this.active = true;
+                ninja.realm = this; target.realm = this;
+            }
+            update(dt) {
+                this.timer -= dt;
+                if (this.timer <= 0 || this.ninja.hp <= 0 || this.target.hp <= 0) { this.active = false; this.ninja.realm = null; this.target.realm = null; }
+            }
+            draw(ctx) {
+                if(!this.active) return;
+                ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI*2); ctx.fillStyle = 'rgba(76, 29, 149, 0.4)'; ctx.fill();
+                ctx.strokeStyle = '#8b5cf6'; ctx.lineWidth = 4; ctx.setLineDash([15, 15]); ctx.stroke(); ctx.setLineDash([]);
+            }
+        }
+
+        class Explosive {
+            constructor(type, x, y, owner, targetX=0, targetY=0) {
+                this.type = type; this.x = x; this.y = y; this.owner = owner; this.active = true;
+                if (type === 'grenade') {
+                    this.timer = 1000; let angle = Math.atan2(targetY - y, targetX - x); let dist = Math.min(600, Math.hypot(targetX - x, targetY - y)); 
+                    this.vx = Math.cos(angle) * (dist / 60); this.vy = Math.sin(angle) * (dist / 60);
+                } else if (type === 'mine') { this.timer = -1; 
+                } else if (type === 'explosion') { this.timer = 300; this.radius = 120; this.damagedTargets = []; }
+            }
+            update(dt) {
+                if (!this.active) return;
+                if (this.type === 'grenade') {
+                    this.x += this.vx; this.y += this.vy; this.timer -= dt;
+                    if (this.timer <= 0) { this.active = false; explosives.push(new Explosive('explosion', this.x, this.y, this.owner)); }
+                } else if (this.type === 'mine') {
+                    for(let t of [player, ...others]) {
+                        if (t && t.hp > 0 && !t.isDeadProcessed && t.team !== this.owner.team && t.realm === this.owner.realm) {
+                            if(Math.hypot(this.x - t.x, this.y - t.y) < t.radius + 15) { this.active = false; explosives.push(new Explosive('explosion', this.x, this.y, this.owner)); break; }
+                        }
+                    }
+                } else if (this.type === 'explosion') {
+                    this.timer -= dt; if (this.timer <= 0) this.active = false;
+                    else {
+                        for(let t of [player, ...others]) {
+                            if (t && t.hp > 0 && t.invincibleTimer <= 0 && t.team !== this.owner.team && !this.damagedTargets.includes(t) && t.realm === this.owner.realm) {
+                                if(Math.hypot(this.x - t.x, this.y - t.y) < this.radius + t.radius) {
+                                    let dmg = 40; if(t.heroType === 'hexagon' && t.ultActiveTimer > 0) dmg *= 0.8;
+                                    t.hp -= dmg; this.damagedTargets.push(t); 
+                                    if(t.hp <= 0 && !t.isDeadProcessed) { t.isDeadProcessed = true; handleDeath(t, this.owner); }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            draw(ctx) {
+                if (!this.active) return;
+                if (this.type === 'grenade') { ctx.beginPath(); ctx.arc(this.x, this.y, 8, 0, Math.PI*2); ctx.fillStyle = '#4b5563'; ctx.fill(); } 
+                else if (this.type === 'mine') { ctx.beginPath(); ctx.arc(this.x, this.y, 12, 0, Math.PI*2); ctx.fillStyle = this.owner.team === 'blue' ? '#3b82f6' : '#ef4444'; ctx.fill(); } 
+                else if (this.type === 'explosion') { let alpha = this.timer / 300; ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI*2); ctx.fillStyle = `rgba(239, 68, 68, ${alpha})`; ctx.fill(); }
+            }
+        }
+
+        class MeleeSlash {
+            constructor(x, y, angle, radius, spread, color, owner) {
+                this.x = x; this.y = y; this.angle = angle; this.radius = radius; this.spread = spread;
+                this.color = color; this.owner = owner; this.timer = 150; this.active = true; this.damaged = [];
+            }
+            update(dt) {
+                this.timer -= dt; if(this.timer <= 0) { this.active = false; return; }
+                this.x = this.owner.x; this.y = this.owner.y;
+                for (let t of [player, ...others]) {
+                    if (t && t.hp > 0 && !t.isDeadProcessed && t.team !== this.owner.team && !this.damaged.includes(t) && this.owner.realm === t.realm) {
+                        let dist = Math.hypot(t.x - this.x, t.y - this.y);
+                        if (dist < this.radius + t.radius) {
+                            let angleToT = Math.atan2(t.y - this.y, t.x - this.x);
+                            let diff = Math.abs(angleToT - this.angle); while(diff > Math.PI) diff -= Math.PI*2;
+                            if (Math.abs(diff) <= this.spread / 2) {
+                                let baseDmg = (this.owner.heroType === 'square') ? 35 : 25;
+                                let dmg = baseDmg; 
+                                if(t.heroType === 'hexagon' && t.ultActiveTimer > 0) dmg *= 0.8;
+                                t.hp -= dmg; this.damaged.push(t);
+                                
+                                if (this.owner.heroType === 'square') {
+                                    let lifesteal = this.owner.ultActiveTimer > 0 ? 20 : 10;
+                                    this.owner.hp = Math.min(this.owner.maxHp, this.owner.hp + lifesteal);
+                                }
+
+                                if (!this.owner.isBot && !this.owner.isRemote) { this.owner.ultGauge = Math.min(100, this.owner.ultGauge + 5); updateUI(); }
+                                if(t.hp <= 0 && !t.isDeadProcessed) { t.isDeadProcessed = true; handleDeath(t, this.owner); }
+                            }
+                        }
+                    }
+                }
+            }
+            draw(ctx) {
+                if(!this.active) return;
+                let alpha = this.timer / 150;
+                ctx.beginPath(); ctx.moveTo(this.x, this.y); ctx.arc(this.x, this.y, this.radius, this.angle - this.spread/2, this.angle + this.spread/2); ctx.closePath();
+                ctx.fillStyle = this.color.replace(')', `, ${alpha * 0.5})`).replace('rgb', 'rgba');
+                if(this.color.startsWith('#')) ctx.fillStyle = `rgba(255,255,255,${alpha})`;
+                ctx.fill();
+            }
+        }
+
+        class Projectile {
+            constructor(x, y, angle, color, owner) {
+                this.x = x; this.y = y; this.radius = 6; this.speed = (owner.heroType === 'triangle') ? 10 : 15;
+                this.vx = Math.cos(angle) * this.speed; this.vy = Math.sin(angle) * this.speed;
+                this.color = color; this.owner = owner; 
+                this.damage = (owner.heroType === 'triangle') ? 10 : 15; 
+                this.active = true; this.distanceTraveled = 0;
+            }
+            update() {
+                let moveDist = Math.hypot(this.vx, this.vy);
+                this.x += this.vx; this.y += this.vy; this.distanceTraveled += moveDist;
+                
+                if (this.owner.heroType === 'triangle' && this.distanceTraveled > 350) { this.active = false; return; }
+
+                if (this.owner.realm) {
+                    if (Math.hypot(this.x - this.owner.realm.x, this.y - this.owner.realm.y) > this.owner.realm.radius) { this.active = false; return; }
+                } else {
+                    if (this.x < 0 || this.x > MAP_WIDTH || this.y < 0 || this.y > MAP_HEIGHT) { this.active = false; return; }
+                }
+                
+                for(let c of supplyCrates) { if(c.dropZ <= 0 && Math.hypot(this.x - c.x, this.y - c.y) < c.radius) { this.active = false; return; } }
+                for (let rect of containers) { if (this.x > rect.x && this.x < rect.x + rect.w && this.y > rect.y && this.y < rect.y + rect.h) { this.active = false; return; } }
+            }
+            draw(ctx) { ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2); ctx.fillStyle = this.color; ctx.fill(); }
+        }
+
+        class Player {
+            constructor(team, isBot = false, heroType = 'circle', name = '용사') {
+                this.team = team; this.isBot = isBot; this.heroType = heroType; this.name = name;
+                const config = HEROES[heroType] || HEROES['circle'];
+                
+                this.radius = 22; this.color = team === 'blue' ? '#3b82f6' : '#ef4444'; 
+                this.baseSpeed = config.baseSpeed; this.maxHp = config.maxHp; this.baseCooldown = config.cooldown;
+                this.shape = config.shape;
+                
+                this.inventory = { mine: 0, grenade: 0 };
+                this.facingAngle = 0; this.realm = null; this.ultGauge = 0; this.flashCooldown = 0;
+                this.isRemote = false; 
+                this.spawn();
+            }
+            spawn() {
+                this.hp = this.maxHp; this.speed = this.baseSpeed; this.vx = 0; this.vy = 0; 
+                this.slowTimer = 0; this.lastAttackTime = 0; this.attackCooldown = this.baseCooldown; this.invincibleTimer = 3000;
+                this.ultActiveTimer = 0; this.lastUltFireTime = 0; this.buffStacks = 0; this.realm = null;
+                this.isDeadProcessed = false; 
+                
+                if (this.team === 'blue') { this.x = Math.random() * 200 + 150; this.y = Math.random() * 800 + (MAP_HEIGHT/2 - 400); } 
+                else { this.x = MAP_WIDTH - (Math.random() * 200 + 150); this.y = Math.random() * 800 + (MAP_HEIGHT/2 - 400); }
+                this.targetX = this.x; this.targetY = this.y;
+            }
+            update(dt) {
+                // --- 수정사항 3: 리모트 플레이어들의 무적/쿨타임이 깎이지 않던 버그 수정 ---
+                if(this.invincibleTimer > 0) this.invincibleTimer -= dt;
+                if(this.flashCooldown > 0) this.flashCooldown -= dt;
+
+                if (this.isRemote && !this.isDeadProcessed) {
+                    if (this.targetX !== undefined) this.x += (this.targetX - this.x) * 0.2;
+                    if (this.targetY !== undefined) this.y += (this.targetY - this.y) * 0.2;
+                    if (this.ultActiveTimer > 0) this.ultActiveTimer -= dt;
+                    return; 
+                }
+                
+                let speedMult = 1.0; let coolMult = 1.0;
+                if (this.realm && this.heroType === 'triangle' && this.realm.ninja === this) {
+                    this.hp = Math.min(this.maxHp, this.hp + 15 * (dt/1000)); speedMult = 1.3; coolMult = 0.5;
+                }
+                if (this.heroType === 'square' && this.ultActiveTimer > 0) coolMult = 0.5;
+
+                let currentBaseSpeed = (this.baseSpeed + (this.buffStacks * 0.08)) * speedMult;
+                this.attackCooldown = Math.max(100, (this.baseCooldown - (this.buffStacks * 10))) * coolMult;
+                if (this.slowTimer > 0) { this.slowTimer -= dt; this.speed = currentBaseSpeed * 0.5; } else { this.speed = currentBaseSpeed; }
+
+                if (!this.isBot && this.hp > 0 && this.ultGauge < 100) {
+                    this.ultGauge = Math.min(100, this.ultGauge + (2.5 * dt / 1000));
+                    if (Math.floor(this.ultGauge) !== Math.floor(this.ultGauge - (2.5 * dt / 1000))) updateUI();
+                }
+
+                if (this.vx !== 0 || this.vy !== 0) this.facingAngle = Math.atan2(this.vy, this.vx);
+
+                if (this.ultActiveTimer > 0) {
+                    this.ultActiveTimer -= dt;
+                    if (this.heroType === 'circle') {
+                        const now = Date.now();
+                        if (now - this.lastUltFireTime > 50) {
+                            this.lastUltFireTime = now; let target = null; let minDist = Infinity;
+                            for (let t of [player, ...others]) {
+                                if (t && t.hp > 0 && t.team !== this.team && t.realm === this.realm) { let d = Math.hypot(t.x - this.x, t.y - this.y); if (d < minDist) { minDist = d; target = t; } }
+                            }
+                            if (target) {
+                                let angle = Math.atan2(target.y - this.y, target.x - this.x) + (Math.random() - 0.5) * 0.25;
+                                projectiles.push(new Projectile(this.x, this.y, angle, '#38bdf8', this));
+                            }
+                        }
+                    } else if (this.heroType === 'hexagon') {
+                        const now = Date.now();
+                        if (now - this.lastUltFireTime > 200) { this.lastUltFireTime = now; meleeSlashes.push(new MeleeSlash(this.x, this.y, 0, 100, Math.PI*2, '#fde047', this)); }
+                    } else if (this.heroType === 'square') {
+                        for (let t of [player, ...others]) {
+                            if (t && t.realm === this.realm && Math.hypot(t.x - this.x, t.y - this.y) <= 150) {
+                                if (t.team === this.team) t.hp = Math.min(t.maxHp, t.hp + 15 * (dt/1000));
+                                else { t.hp -= 15 * (dt/1000); if(t.hp <= 0 && !t.isDeadProcessed) { t.isDeadProcessed = true; handleDeath(t, this); } }
+                            }
+                        }
+                    }
+                    if (this.ultActiveTimer <= 0 && this === player) updateUI();
+                }
+
+                if (this.isBot && this.hp > 0 && !this.isDeadProcessed) {
+                    let target = player; 
+                    if (this.realm) target = (this.realm.ninja === this) ? this.realm.target : this.realm.ninja;
+
+                    if (target && target.hp > 0 && target.realm === this.realm) {
+                        let dx = target.x - this.x; let dy = target.y - this.y; let dist = Math.sqrt(dx*dx + dy*dy);
+                        let attackRange = (this.heroType === 'square' || this.heroType === 'hexagon') ? 60 : ((this.heroType === 'triangle') ? 250 : 600);
+                        
+                        if (dist > attackRange * 0.8 && dist < 1200) { this.vx = dx / dist; this.vy = dy / dist; } 
+                        else if (dist >= 1200) { let cx = MAP_WIDTH/2 - this.x; let cy = MAP_HEIGHT/2 - this.y; let cd = Math.hypot(cx, cy); if(cd > 0) { this.vx = cx/cd; this.vy = cy/cd; } } 
+                        else { this.vx = 0; this.vy = 0; }
+                        
+                        if (dist <= attackRange && Math.random() < 0.05) this.fireProjectile(target.x, target.y);
+                    } else { this.vx = 0; this.vy = 0; }
+                }
+
+                let nextX = this.x + this.vx * this.speed; let nextY = this.y + this.vy * this.speed;
+                
+                if (this.realm) {
+                    let distToRealm = Math.hypot(nextX - this.realm.x, nextY - this.realm.y);
+                    if (distToRealm > this.realm.radius - this.radius) {
+                        let angleFromRealm = Math.atan2(nextY - this.realm.y, nextX - this.realm.x);
+                        nextX = this.realm.x + Math.cos(angleFromRealm) * (this.realm.radius - this.radius);
+                        nextY = this.realm.y + Math.sin(angleFromRealm) * (this.realm.radius - this.radius);
+                    }
+                } else {
+                    nextX = Math.max(this.radius, Math.min(MAP_WIDTH - this.radius, nextX)); nextY = Math.max(this.radius, Math.min(MAP_HEIGHT - this.radius, nextY));
+                }
+
+                if (this.heroType !== 'triangle') {
+                    containers.forEach(rect => {
+                        let testX = nextX; let testY = nextY;
+                        if (nextX < rect.x) testX = rect.x; else if (nextX > rect.x + rect.w) testX = rect.x + rect.w;
+                        if (nextY < rect.y) testY = rect.y; else if (nextY > rect.y + rect.h) testY = rect.y + rect.h;
+                        let dist = Math.sqrt((nextX - testX)**2 + (nextY - testY)**2);
+                        if (dist <= this.radius && dist > 0) {
+                            let overlap = this.radius - dist;
+                            nextX += ((nextX - testX) / dist) * overlap; nextY += ((nextY - testY) / dist) * overlap;
+                        }
+                    });
+                }
+                this.x = nextX; this.y = nextY;
+            }
+
+            drawShape(ctx) {
+                let r = this.radius; ctx.beginPath();
+                if (this.shape === 'circle') { ctx.arc(0, 0, r, 0, Math.PI * 2); } 
+                else if (this.shape === 'square') { ctx.rect(-r*0.9, -r*0.9, r*1.8, r*1.8); } 
+                else if (this.shape === 'triangle') { ctx.moveTo(r, 0); ctx.lineTo(-r*0.8, r*0.8); ctx.lineTo(-r*0.8, -r*0.8); ctx.closePath(); } 
+                else if (this.shape === 'hexagon') { for (let i = 0; i < 6; i++) { ctx.lineTo(r * Math.cos(i * Math.PI / 3), r * Math.sin(i * Math.PI / 3)); } ctx.closePath(); }
+                ctx.fillStyle = this.color; ctx.fill(); ctx.strokeStyle = '#fff'; ctx.lineWidth = 3; ctx.stroke();
+            }
+
+            draw(ctx) {
+                ctx.save(); ctx.translate(this.x, this.y);
+
+                if (this.buffStacks > 0) {
+                    ctx.beginPath(); ctx.arc(0, 0, this.radius + 6 + (this.buffStacks * 2), 0, Math.PI*2); 
+                    ctx.strokeStyle = `rgba(52, 211, 153, ${0.4 + this.buffStacks * 0.1})`; ctx.lineWidth = 4; ctx.stroke();
+                }
+                if (this.invincibleTimer > 0) {
+                    ctx.globalAlpha = 0.5 + Math.abs(Math.sin(Date.now()/100))*0.5; 
+                    ctx.beginPath(); ctx.arc(0, 0, this.radius + 8, 0, Math.PI*2); ctx.strokeStyle = '#fbbf24'; ctx.lineWidth = 4; ctx.stroke();
+                    ctx.globalAlpha = 1.0;
+                }
+                if (this.slowTimer > 0) { ctx.beginPath(); ctx.arc(0, 0, this.radius + 10, 0, Math.PI * 2); ctx.fillStyle = 'rgba(147, 51, 234, 0.4)'; ctx.fill(); }
+
+                if (this.heroType === 'square' && this.ultActiveTimer > 0) {
+                    ctx.beginPath(); ctx.arc(0, 0, 150, 0, Math.PI*2); ctx.fillStyle = 'rgba(74, 222, 128, 0.2)'; ctx.fill();
+                    ctx.strokeStyle = '#4ade80'; ctx.lineWidth = 2; ctx.setLineDash([10, 10]); ctx.stroke(); ctx.setLineDash([]);
+                }
+                if (this.heroType === 'hexagon' && this.ultActiveTimer > 0) { ctx.rotate((Date.now() % 1000) / 1000 * Math.PI * 2); } 
+                else if (this.shape === 'triangle' || this.shape === 'square') { ctx.rotate(this.facingAngle); }
+
+                this.drawShape(ctx);
+
+                if (this.heroType === 'square' && (Date.now() - this.lastAttackTime < 150)) {
+                    let punchExt = Math.sin((Date.now() - this.lastAttackTime)/150 * Math.PI) * 40;
+                    ctx.fillStyle = '#fca5a5'; ctx.beginPath(); ctx.arc(punchExt, -20, 15, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+                    ctx.beginPath(); ctx.arc(punchExt*0.5, 20, 15, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+                }
+
+                ctx.restore();
+
+                // 닉네임 렌더링 (최대 4글자)
+                ctx.fillStyle = '#fff'; ctx.font = 'bold 16px Jua'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                ctx.fillText(this.name, this.x, this.y);
+
+                ctx.fillStyle = '#1f2937'; ctx.fillRect(this.x - 25, this.y - 40, 50, 8);
+                ctx.fillStyle = '#48bb78'; ctx.fillRect(this.x - 25, this.y - 40, 50 * (this.hp / this.maxHp), 8);
+            }
+
+            fireProjectile(twX, twY) {
+                const now = Date.now(); if (now - this.lastAttackTime < this.attackCooldown) return;
+                this.lastAttackTime = now; const angle = Math.atan2(twY - this.y, twX - this.x); this.facingAngle = angle;
+
+                if (this.heroType === 'circle') { projectiles.push(new Projectile(this.x, this.y, angle, this.color, this)); } 
+                else if (this.heroType === 'square') { meleeSlashes.push(new MeleeSlash(this.x, this.y, angle, 90, Math.PI/1.5, this.color, this)); } 
+                else if (this.heroType === 'hexagon') { meleeSlashes.push(new MeleeSlash(this.x, this.y, angle, 120, Math.PI/1.5, this.color, this)); } 
+                else if (this.heroType === 'triangle') {
+                    projectiles.push(new Projectile(this.x, this.y, angle, this.color, this));
+                    projectiles.push(new Projectile(this.x, this.y, angle - 0.25, this.color, this));
+                    projectiles.push(new Projectile(this.x, this.y, angle + 0.25, this.color, this));
+                }
+            }
+        }
+
+        function initMap() {
+            containers = []; const colors = ['#b91c1c', '#0369a1', '#15803d', '#ea580c']; 
+            if (selectedGameMode === 'deathmatch') containers.push(new Container(1400, 1000, 400, 400, colors[1]));
+
+            containers.push(new Container(1400, 200, 400, 150, colors[0])); containers.push(new Container(1400, 2050, 400, 150, colors[1]));
+            containers.push(new Container(1000, 1300, 150, 200, colors[3])); containers.push(new Container(2050, 900, 150, 200, colors[2]));
+            containers.push(new Container(800, 400, 200, 150, colors[0])); containers.push(new Container(2200, 400, 200, 150, colors[3]));
+            containers.push(new Container(800, 1850, 200, 150, colors[2])); containers.push(new Container(2200, 1850, 200, 150, colors[0]));
+            containers.push(new Container(400, 400, 100, 500, colors[2])); containers.push(new Container(400, 1500, 100, 500, colors[2])); 
+            containers.push(new Container(2700, 400, 100, 500, colors[3])); containers.push(new Container(2700, 1500, 100, 500, colors[3])); 
+            respawnZones = [ new RespawnZone(50, 800, 250, 800, 'blue'), new RespawnZone(MAP_WIDTH - 300, 800, 250, 800, 'red') ];
+        }
+
+        let isControlsSetup = false;
+        function setupControls() {
+            if (isControlsSetup) return; 
+            isControlsSetup = true;
+
+            window.addEventListener('keydown', (e) => { 
+                keys[e.code] = true; 
+                if(e.code === 'KeyR') activateUlt();
+                if(e.code === 'KeyF') activateFlash();
+            });
+            window.addEventListener('keyup', (e) => { keys[e.code] = false; });
+            canvas.addEventListener('mousemove', (e) => { mouseX = e.clientX; mouseY = e.clientY; });
+            canvas.addEventListener('contextmenu', (e) => { e.preventDefault(); if (aimingItem) cancelAim(); });
+
+            canvas.addEventListener('pointerdown', (e) => {
+                if (player.hp <= 0 || player.isDeadProcessed || !isGameActive) return;
+                let twX = e.clientX + camera.x; let twY = e.clientY + camera.y;
+
+                if (aimingItem) {
+                    if (aimingItem === 'ult_ninja') {
+                        let target = null; let minDist = 400;
+                        for(let b of others) { if(b && b.hp > 0 && Math.hypot(b.x - twX, b.y - twY) < minDist) { target = b; minDist = Math.hypot(b.x - twX, b.y - twY); } }
+                        if(target) { activeRealms.push(new Realm(player, target)); player.ultGauge = 0; aimingItem = null; showAnnouncement("차원의 결계 전개!"); updateUI(); }
+                        return;
+                    }
+                    else if (aimingItem === 'ult_hexagon') {
+                        if (Math.hypot(twX - player.x, twY - player.y) <= 600) { player.x = twX; player.y = twY; player.ultActiveTimer = 3000; player.ultGauge = 0; aimingItem = null; showAnnouncement("회전 베기!"); updateUI(); }
+                        return;
+                    }
+
+                    let angle = Math.atan2(twY - player.y, twX - player.x); let dist = Math.min(Math.hypot(twX - player.x, twY - player.y), aimingItem === 'grenade' ? 600 : 150); 
+                    let finalX = player.x + Math.cos(angle) * dist; let finalY = player.y + Math.sin(angle) * dist;
+
+                    if (aimingItem === 'grenade') { player.inventory.grenade--; explosives.push(new Explosive('grenade', player.x, player.y, player, finalX, finalY)); } 
+                    else if (aimingItem === 'mine') { player.inventory.mine--; explosives.push(new Explosive('mine', finalX, finalY, player)); }
+                    aimingItem = null; updateUI(); return; 
+                }
+
+                let hitCrate = null;
+                for(let c of supplyCrates) { if(c.active && c.dropZ <= 0 && Math.hypot(c.x - twX, c.y - twY) < c.radius * 2) { hitCrate = c; break; } }
+                if(hitCrate && Math.hypot(player.x - hitCrate.x, player.y - hitCrate.y) < 150) {
+                    if(hitCrate.failedTeams.includes(player.team)) showModal("이미 실패한 보급품입니다."); else openQuiz(hitCrate); return; 
+                }
+
+                let searchedContainer = null;
+                for(let c of containers) {
+                    if (!c.searched && twX > c.x - 40 && twX < c.x + c.w + 40 && twY > c.y - 40 && twY < c.y + c.h + 40) {
+                        let cx = Math.max(c.x, Math.min(player.x, c.x + c.w)); let cy = Math.max(c.y, Math.min(player.y, c.y + c.h));
+                        if (Math.hypot(player.x - cx, player.y - cy) < 100) { searchedContainer = c; break; }
+                    }
+                }
+                if (searchedContainer) {
+                    if (searchedContainer.failedTeams.includes(player.team)) showModal("수색 실패한 컨테이너입니다."); else openQuiz(searchedContainer); return; 
+                }
+
+                if(document.getElementById('quiz-modal-container').style.display !== 'flex' && (player.ultActiveTimer <= 0 || player.heroType === 'square')) {
+                    player.fireProjectile(twX, twY);
+                    if (!isSinglePlayer && currentRoomId) db.ref(`rooms/${currentRoomId}/events/attacks`).push({ uid: myUid, twX: twX, twY: twY });
                 }
             });
 
-            prevLayerIds = currentLayer.map(c => c.id);
+            const zone = document.getElementById('joystick-zone'); if (joystickManager) joystickManager.destroy();
+            joystickManager = nipplejs.create({ zone: zone, mode: 'static', position: { left: '50%', top: '50%' }, color: 'white', size: 120 });
+            joystickManager.on('move', (evt, data) => { if (data && data.vector && player.hp > 0 && !player.isDeadProcessed && isGameActive) { isJoystickActive = true; player.vx = data.vector.x; player.vy = -data.vector.y; } });
+            joystickManager.on('end', () => { isJoystickActive = false; if(player) {player.vx = 0; player.vy = 0;} });
         }
 
-        floors.push([{id: 'start', type: 'start'}]);
-        prevLayerIds.forEach(pId => {
-            links.push(['start', pId]);
-        });
-
-        return { floors: floors, links: links };
-    }
-
-    function isAdjacentForward(id1, id2) { return currentMapData.links.some(l => l[0]===id1 && l[1]===id2); }
-
-    function renderMap() {
-        const container = document.getElementById('map-nodes'); container.innerHTML = '';
-        [...currentMapData.floors].reverse().forEach((floor) => {
-            const rowDiv = document.createElement('div'); rowDiv.className = 'flex justify-center gap-12 w-full z-10 shrink-0';
-            floor.forEach(node => {
-                const nodeDiv = document.createElement('div'); nodeDiv.id = `node-${node.id}`;
-                const isCleared = clearedNodes.includes(node.id); const isCurrent = node.id === currentNodeId;
-                const isAvail = !isCleared && isAdjacentForward(currentNodeId, node.id);
-                let baseClass = 'w-14 h-14 flex items-center justify-center text-3xl rounded shadow-md transition-all border-2 shrink-0 ';
-                
-                if (isCurrent) { baseClass += 'bg-blue-900 border-blue-400 scale-110 shadow-[0_0_20px_rgba(59,130,246,0.8)] z-30'; nodeDiv.innerHTML = nodeIcons[node.type]; }
-                else if (isCleared) { baseClass += 'bg-gray-800 border-green-600 opacity-60 z-20'; nodeDiv.innerHTML = '✔️'; }
-                else if (isAvail) { baseClass += 'bg-[#222] border-yellow-500 animate-pulse cursor-pointer hover:bg-[#444] z-20 hover:scale-105'; nodeDiv.onclick = () => attemptEnterNode(node); nodeDiv.innerHTML = '❓'; }
-                else { baseClass += 'bg-gray-900 border-gray-700 opacity-30 grayscale pointer-events-none'; nodeDiv.innerHTML = '❓'; }
-                
-                nodeDiv.className = baseClass; rowDiv.appendChild(nodeDiv);
-            });
-            container.appendChild(rowDiv);
-        });
-        setTimeout(() => { 
-            drawMapLines(); 
-            // 맵 진입/그리기 완료 시 가장 아래(시작 지점)로 스크롤 이동
-            const scrollArea = document.getElementById('map-scroll-area');
-            if(scrollArea) scrollArea.scrollTop = scrollArea.scrollHeight;
-        }, 50);
-    }
-    
-    function drawMapLines() {
-        const svg = document.getElementById('map-lines'); const scrollArea = document.getElementById('map-scroll-area'); const mapNodes = document.getElementById('map-nodes');
-        if (!svg || !currentMapData) return; svg.innerHTML = ''; 
-        svg.setAttribute('height', mapNodes.scrollHeight); // 전체 높이에 맞춤
-        const containerRect = mapNodes.getBoundingClientRect(); // 기준을 nodes 컨테이너로
+        function toggleAim(type) { if (player.hp <= 0 || !isGameActive) return; if ((type === 'mine' || type === 'grenade') && player.inventory[type] <= 0) return; aimingItem = aimingItem === type ? null : type; updateUI(); }
+        function cancelAim() { aimingItem = null; updateUI(); }
         
-        currentMapData.links.forEach(([id1, id2]) => {
-            const el1 = document.getElementById(`node-${id1}`); const el2 = document.getElementById(`node-${id2}`);
-            if (el1 && el2) {
-                const r1 = el1.getBoundingClientRect(); const r2 = el2.getBoundingClientRect();
-                const x1 = r1.left + r1.width/2 - containerRect.left; const y1 = r1.top + r1.height/2 - containerRect.top;
-                const x2 = r2.left + r2.width/2 - containerRect.left; const y2 = r2.top + r2.height/2 - containerRect.top;
-                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-                line.setAttribute('x1', x1); line.setAttribute('y1', y1); line.setAttribute('x2', x2); line.setAttribute('y2', y2);
-                const isCleared = clearedNodes.includes(id1) && clearedNodes.includes(id2);
-                const isAvail = id1===currentNodeId && !clearedNodes.includes(id2) && isAdjacentForward(id1,id2);
-                line.setAttribute('stroke', isAvail ? '#ca8a04' : (isCleared ? '#16a34a' : '#374151'));
-                line.setAttribute('stroke-width', isAvail ? '5' : '2'); line.setAttribute('stroke-dasharray', (isCleared || isAvail) ? 'none' : '4,4');
-                svg.appendChild(line);
+        function activateUlt() {
+            if (player && player.hp > 0 && !player.isDeadProcessed && player.ultGauge >= 100 && isGameActive) {
+                if (player.heroType === 'circle' || player.heroType === 'square') {
+                    player.ultGauge = 0; player.ultActiveTimer = player.heroType === 'square' ? 5000 : 3000;
+                    showAnnouncement(player.heroType === 'circle' ? "💦 물줄기 난사!" : "🔥 광폭화 및 치유 오라!"); updateUI();
+                } 
+                else if (player.heroType === 'triangle') toggleAim('ult_ninja');
+                else if (player.heroType === 'hexagon') toggleAim('ult_hexagon');
             }
-        });
-    }
+        }
 
-    function enterDungeon(name) {
-        currentDungeon = name; dungeonGainedExp = 0; dungeonGainedGold = 0;
-        document.getElementById('dungeon-select').classList.add('hidden'); 
-        currentMapData = generateMapPattern(name);
-        clearedNodes = ['start']; currentNodeId = 'start';
-        document.getElementById('dungeon-map-view').classList.remove('hidden'); document.getElementById('map-dungeon-name').innerText = name;
-        const bg = document.getElementById('battle-scene-bg');
-        if(name === '마왕성') bg.style.background = 'linear-gradient(to bottom, #4a0000, #111)'; else bg.style.background = '#111';
-        renderMap();
-    }
-
-    function exitDungeon(isFlee = false) {
-        try {
-            if (isFlee && currentDungeon) {
-                let expPen = dungeonGainedExp > 0 ? dungeonGainedExp : Math.floor(player.exp * 0.05); 
-                player.exp = Math.max(0, player.exp - expPen); // 경험치만 까이고 골드 패널티 없음(거지런)
-                showMsg(`[도망침]\n경험치 ${expPen}을(를) 잃었습니다.\n(골드는 무사합니다!)`); 
+        function activateFlash() {
+            if (player && player.hp > 0 && !player.isDeadProcessed && player.flashCooldown <= 0 && isGameActive) {
+                let angle = player.facingAngle;
+                if(player.vx === 0 && player.vy === 0) angle = Math.atan2(mouseY + camera.y - player.y, mouseX + camera.x - player.x);
+                player.x += Math.cos(angle) * 300; player.y += Math.sin(angle) * 300;
+                player.x = Math.max(player.radius, Math.min(MAP_WIDTH - player.radius, player.x)); player.y = Math.max(player.radius, Math.min(MAP_HEIGHT - player.radius, player.y));
+                player.flashCooldown = 30000; showAnnouncement("⚡ 점멸!"); updateUI();
             }
-            isBattling = false; isBossBattle = false; currentDungeon = null; currentMapData = null;
-            document.getElementById('battle-field').classList.add('hidden'); document.getElementById('dungeon-map-view').classList.add('hidden');
-            document.getElementById('event-view').classList.add('hidden'); document.getElementById('dungeon-select').classList.remove('hidden');
-            document.getElementById('confirm-modal').classList.add('hidden');
-            updateStats();
-        } catch (e) { console.error(e); }
-    }
-    function executeFlee() { exitDungeon(true); if(pendingTargetView) { forceSwitchView(pendingTargetView); pendingTargetView = null; } }
-    function cancelSwitch() { document.getElementById('confirm-modal').classList.add('hidden'); pendingTargetView = null; }
-    function requestFlee() { document.getElementById('confirm-modal').classList.remove('hidden'); }
+        }
 
-    function attemptEnterNode(node) {
-        // [중요 버그 수정] 이벤트 노드 진입 전 Boss 상태 완전 해제
-        isBossBattle = false;
+        function showAnnouncement(msg) { const el = document.getElementById('announcement'); el.innerText = msg; el.style.display = 'block'; setTimeout(() => { el.style.display = 'none'; }, 3500); }
+        
+        function triggerAirdrop() { 
+            if (isSinglePlayer) {
+                supplyCrates.push(new SupplyCrate(Math.random() * (MAP_WIDTH - 600) + 300, Math.random() * (MAP_HEIGHT - 600) + 300)); 
+                showAnnouncement("📦 보급이 투하됩니다!"); 
+            } else if (isHost) {
+                db.ref(`rooms/${currentRoomId}/events/supplyCrates`).push({ x: Math.random() * (MAP_WIDTH - 600) + 300, y: Math.random() * (MAP_HEIGHT - 600) + 300, id: 'crate_' + Date.now() });
+            }
+        }
 
-        if(node.type === 'boss') {
-            document.getElementById('quiz-title').innerText = "보스의 방 - 비밀의 문"; document.getElementById('quiz-desc').innerText = "단원 평가. 오답 시 30 피해.";
-            showQuizModal(currentDungeon, (isSuccess) => {
-                if(isSuccess) { 
-                    showMsg("비밀의 문이 열렸습니다!"); 
-                    setTimeout(() => { currentNodeId = node.id; document.getElementById('dungeon-map-view').classList.add('hidden'); isBossBattle = true; startBattle(true); }, 1000); 
-                } else { 
-                    player.hp -= 30; updateStats(); 
-                    if(player.hp <= 0) die(); else showMsg("오답! 마법 함정으로 30 피해를 입었습니다."); 
+        function openQuiz(source) {
+            activeQuizSource = source; document.querySelector('#quiz-box h2').innerText = source.quiz.type === 'crate' ? '📦 보급품 해제 중...' : '🔍 컨테이너 수색 중...';
+            document.getElementById('quiz-question').innerText = source.quiz.question;
+            const container = document.getElementById('quiz-options-container'); container.innerHTML = '';
+            source.quiz.options.forEach(opt => {
+                let btn = document.createElement('button'); btn.className = 'quiz-option w-full'; btn.innerText = opt;
+                btn.onclick = () => submitAnswer(opt); container.appendChild(btn);
+            });
+            document.getElementById('quiz-modal-container').style.display = 'flex';
+        }
+        function closeQuiz() { document.getElementById('quiz-modal-container').style.display = 'none'; activeQuizSource = null; }
+        
+        function submitAnswer(selected) {
+            if(!activeQuizSource) return;
+            if(selected === activeQuizSource.quiz.answer) {
+                if (activeQuizSource.quiz.type === 'crate') {
+                    activeQuizSource.active = false;
+                    if(Math.random() < 0.5) { player.inventory.mine++; showModal("정답! 지뢰 획득!"); } else { player.inventory.grenade++; showModal("정답! 수류탄 획득!"); }
+                } else {
+                    activeQuizSource.searched = true; showModal("수색 성공! 하트팩 발견!");
+                    let cx = activeQuizSource.x + activeQuizSource.w / 2; let cy = activeQuizSource.y + activeQuizSource.h / 2;
+                    let angle = Math.atan2(player.y - cy, player.x - cx);
+                    heartPacks.push(new HeartPack(Math.max(30, Math.min(MAP_WIDTH - 30, player.x + Math.cos(angle)*50)), Math.max(30, Math.min(MAP_HEIGHT - 30, player.y + Math.sin(angle)*50))));
                 }
-            });
-        } else {
-            currentNodeId = node.id; document.getElementById('dungeon-map-view').classList.add('hidden');
-            if (node.type === 'monster') { 
-                startBattle(false); 
-            } else { 
-                handleEventNode(node.type); 
+                updateUI();
+            } else {
+                activeQuizSource.failedTeams.push(player.team); activeQuizSource.generateQuiz(); showModal("오답 실패!");
+            }
+            closeQuiz();
+        }
+
+        function startNewMission() {
+            let idx = Math.floor(Math.random() * missions.length);
+            let currentMissionTemp = missions[idx]; let correctAnswers = [];
+            if (currentMissionTemp.type === 'divisor') { for(let i=1; i<=currentMissionTemp.target; i++) { if(currentMissionTemp.target % i === 0) correctAnswers.push(i); } } 
+            else { for(let i=1; i<=6; i++) correctAnswers.push(currentMissionTemp.target * i); }
+
+            let newOrbs = [];
+            for (let i = 0; i < 20; i++) { 
+                let x, y, valid = false, attempts = 0;
+                while (!valid && attempts < 50) {
+                    x = Math.random() * (MAP_WIDTH - 200) + 100; y = Math.random() * (MAP_HEIGHT - 200) + 100; valid = true;
+                    for (let c of containers) { if (x > c.x - 20 && x < c.x + c.w + 20 && y > c.y - 20 && y < c.y + c.h + 20) { valid = false; break; } }
+                    attempts++;
+                }
+                if (valid) newOrbs.push({ x: x, y: y, number: (i < 6) ? correctAnswers[Math.floor(Math.random() * correctAnswers.length)] : Math.floor(Math.random() * 30) + 1, id: 'orb_' + i + '_' + Date.now() }); 
+            }
+
+            if (isSinglePlayer) {
+                currentMission = missions[idx]; missionBanner.innerText = currentMission.text;
+                missionBanner.classList.add('mission-pop'); setTimeout(() => missionBanner.classList.remove('mission-pop'), 300);
+                orbs = newOrbs.map(o => new ResourceOrb(o.x, o.y, o.number, o.id));
+            } else if (isHost) {
+                db.ref(`rooms/${currentRoomId}/events/mission`).set({ index: idx, orbs: newOrbs });
             }
         }
-    }
 
-    function handleEventNode(type) {
-        const view = document.getElementById('event-view'); const title = document.getElementById('event-title'); const icon = document.getElementById('event-icon');
-        const desc = document.getElementById('event-desc'); const btnContainer = document.getElementById('event-buttons');
-        view.classList.remove('hidden'); btnContainer.innerHTML = '';
+        function checkGameEnd() {
+            if(selectedGameMode === 'deathmatch') {
+                if(stats.blue.kills >= 100) endGame("블루팀 승리! (100킬 달성)");
+                else if(stats.red.kills >= 100) endGame("레드팀 승리! (100킬 달성)");
+            }
+        }
         
-        if (type === 'treasure') {
-            title.innerText = '비밀의 보물상자'; icon.innerText = '🧰'; desc.innerText = '황금 열쇠를 사용하거나, 수학 주문을 외워 열 수 있습니다.';
-            const btnKey = document.createElement('button'); const hasKeyIndex = player.inventory.bag.findIndex(i => i.id === 'k1');
-            btnKey.className = `pixel-btn w-3/4 py-3 text-lg ${hasKeyIndex > -1 ? 'bg-yellow-700' : 'bg-gray-700'}`; btnKey.innerText = hasKeyIndex > -1 ? '🔑 열쇠 사용하기' : '열쇠가 없습니다'; btnKey.disabled = hasKeyIndex === -1;
-            btnKey.onclick = () => { player.inventory.bag[hasKeyIndex].count--; if(player.inventory.bag[hasKeyIndex].count <=0) player.inventory.bag.splice(hasKeyIndex,1); openChestLoot(); };
+        function endGame(msg) {
+            currentState = GAME_STATE.GAME_OVER; const modal = document.getElementById('modal');
+            modal.innerText = msg; modal.style.display = 'block';
+            if (animationFrameId) cancelAnimationFrame(animationFrameId); 
+            setTimeout(() => { modal.style.display = 'none'; document.getElementById('game-container').style.display = 'none'; document.getElementById('start-screen').style.display = 'flex'; }, 5000);
+        }
+
+        function handleDeath(deadPlayer, killer) {
+            if (isSinglePlayer) {
+                displayKillLog(killer ? killer.name : '시스템', killer ? killer.team : '', deadPlayer.name, deadPlayer.team);
+                if (deadPlayer.team === 'blue') { stats.blue.deaths++; stats.red.kills++; if(deadPlayer===player) { showModal("사망! 3초 후 리스폰됩니다."); closeQuiz(); } } 
+                else { stats.red.deaths++; stats.blue.kills++; if(killer===player) showModal("적을 처치했습니다!"); }
+                
+                document.getElementById('score-blue-kill').innerText = stats.blue.kills; document.getElementById('score-blue-death').innerText = stats.blue.deaths;
+                document.getElementById('score-red-kill').innerText = stats.red.kills; document.getElementById('score-red-death').innerText = stats.red.deaths;
+                
+                if(deadPlayer.realm) { deadPlayer.realm.active = false; deadPlayer.realm = null; }
+                deadPlayer.hp = 0; deadPlayer.x = -1000; deadPlayer.targetX = -1000; deadPlayer.isDeadProcessed = true;
+                setTimeout(() => { deadPlayer.spawn(); updateUI(); }, 3000); updateUI();
+                checkGameEnd();
+            } else {
+                if (deadPlayer === player || (isHost && deadPlayer.isBot)) {
+                    db.ref(`rooms/${currentRoomId}/events/killLogs`).push({
+                        killerName: killer ? killer.name : '알 수 없음', killerTeam: killer ? killer.team : '',
+                        victimName: deadPlayer.name, victimTeam: deadPlayer.team,
+                        victimUid: deadPlayer === player ? myUid : deadPlayer.name
+                    });
+                }
+                deadPlayer.hp = 0; deadPlayer.isDeadProcessed = true; 
+            }
+        }
+
+        function checkCollisions() {
+            if (player.hp > 0 && !player.isDeadProcessed) {
+                for (let i = orbs.length - 1; i >= 0; i--) {
+                    let orb = orbs[i];
+                    if (Math.hypot(player.x - orb.x, player.y - orb.y) < player.radius + orb.radius) {
+                        let isAns = currentMission.type === 'divisor' ? (currentMission.target % orb.number === 0) : (orb.number % currentMission.target === 0);
+                        if (isAns) player.buffStacks = Math.min(5, player.buffStacks + 1); else player.slowTimer = 3000; 
+                        
+                        orbs.splice(i, 1); updateUI(); 
+                        if (!isSinglePlayer) db.ref(`rooms/${currentRoomId}/events/orbEaten`).push(orb.id);
+                        
+                        if (isSinglePlayer || isHost) { if (!orbs.some(o => currentMission.type === 'divisor' ? (currentMission.target % o.number === 0) : (o.number % currentMission.target === 0)) || orbs.length === 0) startNewMission(); }
+                    }
+                }
+                for (let i = heartPacks.length - 1; i >= 0; i--) {
+                    let hp = heartPacks[i];
+                    if (Math.hypot(player.x - hp.x, player.y - hp.y) < player.radius + hp.radius) { player.hp = Math.min(player.maxHp, player.hp + 50); heartPacks.splice(i, 1); showModal("하트팩 획득! 체력 +50"); updateUI(); }
+                }
+            }
             
-            const btnMath = document.createElement('button'); btnMath.className = "pixel-btn w-3/4 py-3 text-lg bg-blue-900 mt-2"; btnMath.innerText = '🪄 수학 주문 외우기 (위험)';
-            btnMath.onclick = () => {
-                document.getElementById('quiz-title').innerText = "보물상자 마법 해제"; document.getElementById('quiz-desc').innerText = "정답을 맞춰도 50% 확률로 함정(미믹)이 발동합니다.";
-                showQuizModal(currentDungeon, (isSuccess) => {
-                    if(isSuccess) { if(Math.random() < 0.5) { view.classList.add('hidden'); showMsg("앗! 상자가 미믹으로 변했습니다!"); setTimeout(startMimicBattle, 1500); } else openChestLoot(); } 
-                    else { desc.innerText = "주문 실패! 상자가 굳게 잠겨버렸습니다."; btnContainer.innerHTML = '<button class="pixel-btn w-3/4 py-3 text-lg" onclick="completeNode()">돌아가기</button>'; }
-                });
-            };
-            btnContainer.appendChild(btnKey); btnContainer.appendChild(btnMath);
-        } else if (type === 'shrine') {
-            title.innerText = '지혜의 성소'; icon.innerText = '⛲'; desc.innerText = '상처를 치유하고 영구적인 지혜를 얻습니다.';
-            const btn = document.createElement('button'); btn.className = "pixel-btn w-3/4 py-3 text-lg bg-blue-800"; btn.innerText = "진행";
-            btn.onclick = () => { player.hp = player.maxHp; player.baseAtk += 1; updateStats(); desc.innerHTML = `체력 완전 회복 & <span class="text-red-400">영구 공격력+1</span>`; btnContainer.innerHTML = '<button class="pixel-btn w-3/4 py-3 text-lg" onclick="completeNode()">돌아가기</button>'; };
-            btnContainer.appendChild(btn);
-        } else if (type === 'empty') {
-            title.innerText = '수학자의 야영지'; icon.innerText = '🏕️'; desc.innerText = '안전하게 휴식합니다.';
-            const btn = document.createElement('button'); btn.className = "pixel-btn w-3/4 py-3 text-lg bg-blue-800"; btn.innerText = "진행";
-            btn.onclick = () => { player.mp = player.maxMp; player.hp = Math.min(player.maxHp, player.hp + 50); updateStats(); desc.innerHTML = `마나 완전 회복 & 체력 50 회복!`; btnContainer.innerHTML = '<button class="pixel-btn w-3/4 py-3 text-lg" onclick="completeNode()">돌아가기</button>'; };
-            btnContainer.appendChild(btn);
-        }
-    }
-    
-    function openChestLoot() {
-        const desc = document.getElementById('event-desc'); const btnContainer = document.getElementById('event-buttons'); const roll = Math.random();
-        if(roll < 0.2) { desc.innerHTML = "상자가 텅 비어있습니다... (꽝)"; } 
-        else if(roll < 0.5) { const gold = 100 + Math.floor(Math.random()*200); player.gold += gold; dungeonGainedGold += gold; desc.innerHTML = `<span class="text-yellow-400">${gold} 골드</span> 획득!`; } 
-        else if(roll < 0.8) { addItemToInventory('bag', 'p1', 1); desc.innerHTML = `초보자 포션을 획득했습니다! (가방 확인)`; } 
-        else {
-            let dropId = 'd_w1';
-            if (currentDungeon === '오크 부락' || currentDungeon === '악마기사단') dropId = 'd_w3';
-            if (currentDungeon === '뒤틀린 슬라임 부족') dropId = 'd_w4';
-            if (currentDungeon === '마왕성') dropId = 'd_w4'; // 임시로 최고 파밍템 지급
-            addItemToInventory('bag', dropId, 1); desc.innerHTML = `<span class="text-purple-400 font-bold">희귀 장비 [${itemDB[dropId].name}] 획득!!</span>`;
-        }
-        updateStats(); btnContainer.innerHTML = '<button class="pixel-btn w-3/4 py-3 text-lg" onclick="completeNode()">돌아가기</button>';
-    }
-
-    function completeNode() {
-        clearedNodes.push(currentNodeId); 
-        document.getElementById('event-view').classList.add('hidden'); 
-        document.getElementById('battle-field').classList.add('hidden');
-        
-        if (player.inventory.equip.armor && itemDB[player.inventory.equip.armor.id].special?.type === 'heal_on_clear') {
-            const healAmount = itemDB[player.inventory.equip.armor.id].special.heal;
-            player.hp = Math.min(player.maxHp, player.hp + healAmount);
-            logMessage(`🛡️ [오크 전사의 갑옷] 효과로 체력이 ${healAmount} 회복되었습니다.`, 'text-green-400');
-            updateStats();
-        }
-
-        if (isBossBattle) { 
-            // 보스 처치 성공 시 업적 추가
-            player.achievements[currentDungeon] = (player.achievements[currentDungeon] || 0) + 1;
-            updateAchievementsUI();
-            updateQuestProgress('clear', currentDungeon); 
-            showMsg(`🎉 축하합니다! [${currentDungeon}] 정복 완료!`); 
-            exitDungeon(); 
-            return; 
-        }
-        // 일반 노드나 전투 종료 후 다시 맵 화면 띄움
-        document.getElementById('dungeon-map-view').classList.remove('hidden'); 
-        renderMap();
-    }
-
-    function startBattle(isBoss) {
-        document.getElementById('battle-field').classList.remove('hidden'); els.log.innerHTML = '<div class="text-yellow-400">전투 시작!</div>'; isBattling = true;
-        playerBattleStatus = { atkBuff: 0, atkBuffTurns: 0, defBuff: 0, defBuffTurns: 0 }; 
-        
-        if (isBoss) { currentMonster = { ...bosses[currentDungeon] }; els.mSprite.classList.add('scale-150', 'text-red-500'); } 
-        else { const dMons = monsters.filter(m => m.dungeon === currentDungeon); currentMonster = { ...dMons[Math.floor(Math.random() * dMons.length)] }; els.mSprite.classList.remove('scale-150', 'text-red-500'); }
-        
-        currentMonster.maxHp = currentMonster.hp; currentMonster.status = { bleed: 0, bleedDmg: 0, paralyze: false, isPoison: false }; 
-        currentMonster.turnCount = 0; 
-        
-        els.mName.innerText = currentMonster.name; els.mSprite.innerText = currentMonster.sprite; updateMonsterHp(); 
-        logMessage(`야생의 <span class="text-red-400">${currentMonster.name}</span> 등장!`);
-    }
-
-    function startMimicBattle() {
-        document.getElementById('battle-field').classList.remove('hidden'); els.log.innerHTML = '<div class="text-purple-400">함정 발동! 상자가 미믹이었습니다!</div>'; isBattling = true; isBossBattle = false; // 보스가 아님을 명확히
-        currentMonster = { name: "미믹", level: 10, hp: 300, maxHp: 300, atk: 40, def: 15, exp: 200, gold: 300, sprite: '🧰', drop: 'k1', status: {bleed:0, paralyze:false}, turnCount: 0 };
-        els.mSprite.classList.remove('scale-150', 'text-red-500'); els.mName.innerText = currentMonster.name; els.mSprite.innerText = currentMonster.sprite; updateMonsterHp();
-    }
-
-    function updateMonsterHp() {
-        if (!currentMonster) return;
-        els.mHpBar.style.width = `${Math.max(0, (currentMonster.hp / currentMonster.maxHp) * 100)}%`; els.mHpText.innerText = `${Math.max(0, currentMonster.hp)} / ${currentMonster.maxHp}`;
-        const statusDiv = document.getElementById('monster-status'); statusDiv.innerHTML = '';
-        if (currentMonster.status) {
-            if (currentMonster.status.bleed > 0) statusDiv.innerHTML += `<span class="${currentMonster.status.isPoison ? 'bg-purple-900 border-purple-500' : 'bg-red-900 border-red-500'} text-white px-1 rounded border">${currentMonster.status.isPoison ? '☠️중독' : '🩸출혈'}(${currentMonster.status.bleed})</span>`;
-            if (currentMonster.status.paralyze) statusDiv.innerHTML += `<span class="bg-yellow-700 text-white px-1 rounded border border-yellow-400">⚡마비</span>`;
-        }
-        if (currentMonster.physicalImmune) statusDiv.innerHTML += `<span class="bg-gray-600 text-white px-1 rounded border border-gray-400">🛡️물리면역</span>`;
-    }
-    
-    function attack() {
-        if (!isBattling || player.hp <= 0) return;
-        
-        if (currentMonster.physicalImmune) {
-            logMessage(`🛡️ 일반 물리 타격이 <span class="text-red-400">무효화</span> 되었습니다! (진리/마법 필요)`, 'text-gray-400 font-bold');
-            els.mSprite.style.transform = 'scale(0.9)'; setTimeout(() => els.mSprite.style.transform = 'none', 100);
-            setTimeout(monsterTurn, 600);
-            return;
-        }
-
-        const weapon = player.inventory.equip.weapon; const special = weapon ? itemDB[weapon.id].special : null;
-        let attacks = 1;
-        if(special && special.type === 'double' && Math.random() < special.chance) { attacks = 2; logMessage('⚔️ 더블 어택 발동!', 'text-yellow-400 font-bold'); }
-
-        for(let i=0; i<attacks; i++) {
-            if(currentMonster.hp <= 0) break;
-            let dmg = Math.max(1, getTotalAtk() - currentMonster.def);
-            let variance = 0.2; if(special && special.type === 'rng') variance = special.variance;
-            dmg = Math.floor(dmg * ((1 - variance) + Math.random() * (variance * 2)));
-
-            if(special && special.type === 'crit' && Math.random() < special.chance) { dmg = Math.floor(dmg * special.mult); logMessage('💥 크리티컬 히트!', 'text-red-400 font-bold'); }
-            if(special && special.type === 'anti_goblin' && currentMonster.name.includes('고블린')) { dmg = currentMonster.hp; logMessage('🔱 고블린 족장의 창 발동! 고블린을 즉사시킵니다!', 'text-purple-400 font-bold'); }
-
-            currentMonster.hp -= dmg; logMessage(`공격! ${currentMonster.name}에게 ${dmg} 피해.`);
-
-            if(special && special.type === 'bleed' && Math.random() < special.chance) { currentMonster.status.bleed = special.turns; currentMonster.status.bleedDmg = special.dmg; currentMonster.status.isPoison = false; logMessage(`🩸 ${currentMonster.name}에게 출혈을 일으켰습니다!`, 'text-red-500'); }
-            if(special && special.type === 'poison' && Math.random() < special.chance) { currentMonster.status.bleed = special.turns; currentMonster.status.bleedDmg = special.dmg; currentMonster.status.isPoison = true; logMessage(`☠️ ${currentMonster.name}을(를) 치명적인 맹독에 중독시켰습니다!`, 'text-purple-500'); }
-            if(special && special.type === 'paralyze' && Math.random() < special.chance) { currentMonster.status.paralyze = true; logMessage(`⚡ ${currentMonster.name}가 마비되었습니다!`, 'text-purple-400'); }
-
-            els.mSprite.style.transform = 'translateX(10px)'; setTimeout(() => els.mSprite.style.transform = 'none', 100);
-        }
-
-        updateMonsterHp();
-        if (currentMonster.hp <= 0) winBattle(); else setTimeout(monsterTurn, 600);
-    }
-
-    function openBattleSkill() {
-        if(!isBattling) return; const list = document.getElementById('battle-skill-list-container'); list.innerHTML = ''; 
-        const activeSkills = player.skills.map(id => skillDB.find(s => s.id === id)).filter(s => s && s.type === "마법(액티브)");
-        
-        if(activeSkills.length === 0) { list.innerHTML = '<div class="text-center text-gray-500 py-4 text-xs">배운 마법이 없습니다.</div>'; }
-        else {
-            activeSkills.forEach(skill => {
-                const btn = document.createElement('button');
-                btn.className = "pixel-btn p-2 flex flex-col items-center border-gray-600 bg-[#222]";
-                btn.innerHTML = `<span class="text-lg ${skill.color}">${skill.icon} ${skill.name}</span><span class="text-[0.6rem] text-gray-400 mt-1">${skill.desc}</span>`;
-                btn.onclick = () => { castSkill(skill.id); document.getElementById('battle-skill-modal').classList.add('hidden'); };
-                list.appendChild(btn);
-            });
-        }
-        document.getElementById('battle-skill-modal').classList.remove('hidden');
-    }
-
-    function castSkill(skillId) {
-        if (!isBattling || player.hp <= 0) return;
-        let mpCost = 0; let castSuccess = false;
-        
-        if(skillId === 's2' && player.mp >= 20) {
-            mpCost = 20; let dmg = Math.max(1, Math.floor(getTotalAtk() * 2.5) - currentMonster.def); currentMonster.hp -= dmg;
-            logMessage(`💨 [바람의 함수] ${currentMonster.name}에게 <span class="text-yellow-400">${dmg}</span> 피해!`); castSuccess = true;
-        } else if(skillId === 's3' && player.mp >= 40) {
-            mpCost = 40; let dmg = Math.floor(getTotalAtk() * 3.0); currentMonster.hp -= dmg; 
-            logMessage(`📐 [피타고라스 일격] 방어력을 뚫고 <span class="text-red-400 font-bold">${dmg}</span> 치명적 피해!`); castSuccess = true;
-        } else if(skillId === 's4' && player.mp >= 30) {
-            mpCost = 30; logMessage(`🔢 [방정식의 폭주] 마력 연타 시작!`, 'text-purple-400');
-            for(let i=0; i<3; i++) { if(currentMonster.hp <= 0) break; let dmg = Math.max(1, Math.floor(getTotalAtk() * 1.5) - currentMonster.def); currentMonster.hp -= dmg; logMessage(` ➡️ ${i+1}연타: ${dmg} 피해!`); }
-            castSuccess = true;
-        } else if(skillId === 's5' && player.mp >= 25) {
-            mpCost = 25; player.hp = Math.min(player.maxHp, player.hp + 100); playerBattleStatus.defBuff = 30; playerBattleStatus.defBuffTurns = 3;
-            logMessage(`🔰 [절대값 쉴드] 체력 100 회복 & 3턴간 방어력 +30!`, 'text-green-400 font-bold'); castSuccess = true;
-        } else if(skillId === 's6' && player.mp >= 80) {
-            mpCost = 80; let dmg = Math.floor(getTotalAtk() * 5.0); currentMonster.hp -= dmg; 
-            logMessage(`☄️ [운석의 기하학] 하늘에서 거대한 메테오가 떨어집니다! 방어를 무시하고 <span class="text-red-500 font-bold text-xl">${dmg}</span> 피해!`); castSuccess = true;
-        }
-
-        if(!castSuccess) return showMsg("MP가 부족하거나 스킬을 시전할 수 없습니다.");
-        
-        player.mp -= mpCost; updateStats(); updateMonsterHp();
-        els.mSprite.style.transform = 'scale(1.2) rotate(10deg) brightness(2)'; setTimeout(() => els.mSprite.style.transform = '', 150);
-        if (currentMonster.hp <= 0) winBattle(); else setTimeout(monsterTurn, 600);
-    }
-
-    function monsterTurn() {
-        if (!isBattling || player.hp <= 0 || currentMonster.hp <= 0) return;
-        currentMonster.turnCount++;
-
-        if(playerBattleStatus.atkBuffTurns > 0) { playerBattleStatus.atkBuffTurns--; if(playerBattleStatus.atkBuffTurns <= 0) { playerBattleStatus.atkBuff = 0; logMessage(`공격력 버프가 사라졌습니다.`, 'text-gray-400'); updateStats(); } }
-        if(playerBattleStatus.defBuffTurns > 0) { playerBattleStatus.defBuffTurns--; if(playerBattleStatus.defBuffTurns <= 0) { playerBattleStatus.defBuff = 0; logMessage(`방어력 버프가 사라졌습니다.`, 'text-gray-400'); updateStats(); } }
-
-        if(currentMonster.status && currentMonster.status.bleed > 0) {
-            currentMonster.hp -= currentMonster.status.bleedDmg; currentMonster.status.bleed--;
-            const dotMsg = currentMonster.status.isPoison ? `☠️ 맹독 피해! ${currentMonster.name}이(가) ${currentMonster.status.bleedDmg} 피해를 입었습니다.` : `🩸 출혈 피해! ${currentMonster.name}이(가) ${currentMonster.status.bleedDmg} 피해를 입었습니다.`;
-            logMessage(dotMsg, currentMonster.status.isPoison ? 'text-purple-500' : 'text-red-400'); updateMonsterHp();
-            if(currentMonster.hp <= 0) { setTimeout(winBattle, 500); return; }
-        }
-
-        if(currentMonster.status && currentMonster.status.paralyze) {
-            logMessage(`⚡ ${currentMonster.name}은(는) 마비되어 움직일 수 없습니다!`, 'text-purple-400'); currentMonster.status.paralyze = false; updateMonsterHp(); return;
-        }
-
-        if(currentMonster.name === "수학의 대마왕") {
-            if(currentMonster.turnCount % 4 === 3) { currentMonster.hp = Math.min(currentMonster.maxHp, currentMonster.hp + 300); updateMonsterHp(); logMessage(`👿 대마왕이 [암흑 연산]으로 체력을 300 회복합니다!`, 'text-purple-400 font-bold'); return; }
-            if(currentMonster.turnCount % 4 === 0) {
-                let dmg = Math.max(1, (currentMonster.atk * 2) - Math.floor(getTotalDef() / 2)); player.hp -= dmg;
-                logMessage(`☄️ 대마왕의 궁극기! [차원 붕괴] 방어력을 관통하여 ${dmg} 피해!`, 'text-red-500 font-bold text-lg');
-                document.body.style.backgroundColor = '#550000'; setTimeout(() => document.body.style.backgroundColor = '#1a1a1a', 150);
-                updateStats(); if (player.hp <= 0) die(); return;
+            for (let i = projectiles.length - 1; i >= 0; i--) {
+                let p = projectiles[i]; if (!p.active) continue;
+                for (let t of [player, ...others]) {
+                    if (t && t.hp > 0 && t.invincibleTimer <= 0 && !t.isDeadProcessed && p.owner.team !== t.team && p.owner.realm === t.realm) {
+                        if (Math.hypot(t.x - p.x, t.y - p.y) < t.radius + p.radius) { 
+                            let dmg = p.damage; if(t.heroType === 'hexagon' && t.ultActiveTimer > 0) dmg *= 0.8;
+                            t.hp -= dmg; p.active = false; 
+                            if (!p.owner.isBot && !p.owner.isRemote) { p.owner.ultGauge = Math.min(100, p.owner.ultGauge + 5); updateUI(); }
+                            if(t.hp <= 0 && !t.isDeadProcessed) { t.isDeadProcessed = true; handleDeath(t, p.owner); }
+                        }
+                    }
+                }
             }
         }
 
-        let dmg = Math.max(1, currentMonster.atk - getTotalDef()); player.hp -= dmg; updateStats();
-        document.body.style.backgroundColor = '#420000'; setTimeout(() => document.body.style.backgroundColor = '#1a1a1a', 100);
-        logMessage(`💥 ${currentMonster.name}의 반격! ${dmg} 피해.`, 'text-red-400');
-        if (player.hp <= 0) die();
-    }
-
-    function winBattle() {
-        isBattling = false; const exp = currentMonster.exp; const gold = currentMonster.gold;
-        player.exp += exp; dungeonGainedGold += gold; dungeonGainedExp += exp;
-        logMessage(`🏆 승리! 경험치 ${exp}, 골드 ${gold} 획득!`, 'text-yellow-400'); 
-        updateQuestProgress('kill', currentMonster.name);
-
-        if(isBossBattle) { 
-            let dropId = null, matId = null, wChance = 0, mChance = 0;
-            if (currentDungeon === '초보자의 숲') { dropId = 'b_w1'; matId = 'b_m1'; wChance = 0.10; mChance = 0.30; }
-            else if (currentDungeon === '고블린 동굴') { dropId = 'b_w2'; matId = 'b_m2'; wChance = 0.10; mChance = 0.30; }
-            else if (currentDungeon === '오크 부락') { dropId = 'b_a1'; matId = 'b_m3'; wChance = 0.04; mChance = 0.20; }
-            else if (currentDungeon === '악마기사단') { dropId = 'b_w3'; matId = 'b_m4'; wChance = 0.05; mChance = 0.20; }
-            else if (currentDungeon === '뒤틀린 슬라임 부족') { dropId = 'b_w4'; matId = 'b_p1'; wChance = 0.01; mChance = 0.10; }
-
-            const roll = Math.random();
-            if (dropId && roll < wChance) { if(addItemToInventory('bag', dropId)) logMessage(`✨ 전설의 보스 장비 [${itemDB[dropId].name}] 획득!!`, 'text-purple-400 font-bold'); } 
-            else if (matId && roll < wChance + mChance) { if(addItemToInventory('bag', matId)) logMessage(`🎁 보스 전리품 [${itemDB[matId].name}] 획득!`, 'text-green-300 font-bold'); }
-        } else if(currentMonster.drop && Math.random() < 0.5) { addItemToInventory('bag', currentMonster.drop); logMessage(`전리품: [${itemDB[currentMonster.drop].name}]`, 'text-green-300'); }
-        
-        els.mSprite.style.opacity = '0.2'; checkLevelUp(); updateStats(); setTimeout(() => { els.mSprite.style.opacity = '1'; completeNode(); }, 1200);
-    }
-
-    function checkLevelUp() {
-        if (player.exp >= player.maxExp) {
-            player.level++; player.exp -= player.maxExp; player.maxExp = Math.floor(player.maxExp * 1.5);
-            player.maxHp += 20; player.hp = player.maxHp; player.maxMp += 10; player.mp = player.maxMp; player.baseAtk += 3; player.baseDef += 1;
-            logMessage(`🎉 레벨 업! LEVEL ${player.level} 달성!`, 'text-yellow-400 font-bold');
-            if (player.exp >= player.maxExp) checkLevelUp(); // 연속 렙업 처리
+        function updateDominationUI() {
+            document.getElementById('dom-blue').innerText = Math.floor(domScores.blue); document.getElementById('dom-red').innerText = Math.floor(domScores.red);
+            let m = Math.floor(gameTimeRemaining / 60); let s = Math.floor(gameTimeRemaining % 60); document.getElementById('game-time').innerText = `${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
         }
-    }
 
-    function die() {
-        try {
-            isBattling = false; currentDungeon = null; showMsg("💀 눈 앞이 깜깜해졌다... 마을로 귀환합니다.");
-            player.hp = player.maxHp * 0.1; player.exp = Math.max(0, player.exp - (player.maxExp * 0.1)); updateStats();
-            document.getElementById('battle-field').classList.add('hidden'); document.getElementById('dungeon-map-view').classList.add('hidden');
-            document.getElementById('event-view').classList.add('hidden'); document.getElementById('dungeon-select').classList.remove('hidden');
-            forceSwitchView('view-quest');
-        } catch(e) { console.error(e); }
-    }
-    
-    function refreshQuestBoard() {
-        const board = document.getElementById('quest-content');
-        if (!player.activeQuest) {
-            if (!window.offeredQuest) {
-                let availableQuests = questDB.filter(q => player.level >= q.reqLevel && player.level < q.reqLevel + 5);
-                if (availableQuests.length === 0) availableQuests = questDB.filter(q => player.level >= q.reqLevel);
-                if (availableQuests.length === 0) availableQuests = [questDB[0]]; 
-                window.offeredQuest = availableQuests[Math.floor(Math.random() * availableQuests.length)];
+        function updateUI() {
+            if (player) {
+                uiHp.style.width = player.hp > 0 ? `${(player.hp / player.maxHp) * 100}%` : `0%`; uiUlt.style.width = `${player.ultGauge}%`;
+                document.getElementById('badge-mine').innerText = player.inventory.mine; document.getElementById('badge-grenade').innerText = player.inventory.grenade;
+                document.getElementById('ui-buff').innerText = `강화: ${player.buffStacks}단계`;
+                
+                const btnMine = document.getElementById('btn-mine'); const btnGrenade = document.getElementById('btn-grenade');
+                btnMine.style.boxShadow = aimingItem === 'mine' ? '0 0 20px #d8b4fe, inset 0 0 10px #d8b4fe' : '0 4px 6px rgba(0,0,0,0.5)';
+                btnGrenade.style.boxShadow = aimingItem === 'grenade' ? '0 0 20px #fca5a5, inset 0 0 10px #fca5a5' : '0 4px 6px rgba(0,0,0,0.5)';
+                
+                const btnUlt = document.getElementById('btn-ult');
+                if (player.ultGauge >= 100) btnUlt.classList.add('ult-ready'); else btnUlt.classList.remove('ult-ready');
+
+                const flashEl = document.getElementById('flash-cd-text');
+                if(player.flashCooldown > 0) flashEl.innerText = Math.ceil(player.flashCooldown/1000) + 's'; else flashEl.innerText = '';
             }
-            const q = window.offeredQuest;
-            board.innerHTML = `<div class="text-gray-400 text-xs mb-2">새로운 의뢰가 들어왔습니다.</div><div class="text-blue-300 font-bold mb-1">[의뢰] ${q.title} <span class="text-[0.6rem] text-gray-500 font-normal">(요구 Lv.${q.reqLevel})</span></div><div class="text-xs mb-3 text-gray-400">${q.desc}</div><div class="text-xs text-yellow-400 mb-3 text-right">보상: ${q.gold}G, ${q.exp}EXP</div><button class="pixel-btn py-2 bg-blue-800 text-white w-full" onclick="acceptQuest(${q.id})">의뢰 수락하기</button>`;
-        } else {
-            const q = player.activeQuest;
-            if (q.currentCount >= q.count) { board.innerHTML = `<div class="text-green-400 font-bold mb-1">[완료] ${q.title}</div><div class="text-xs mb-3 text-gray-400">${q.desc}</div><button class="pixel-btn py-2 bg-yellow-700 text-white w-full" onclick="completeQuest()">보상 받기 (${q.gold}G, ${q.exp}EXP)</button>`; }
-            else { board.innerHTML = `<div class="text-blue-300 font-bold mb-1">[진행중] ${q.title}</div><div class="text-xs mb-2 text-gray-400">${q.desc}</div><div class="w-full bg-gray-800 h-2 mb-1 border border-gray-600"><div class="bg-blue-500 h-full" style="width: ${(q.currentCount / q.count) * 100}%"></div></div><div class="text-right text-xs text-gray-400">${q.currentCount} / ${q.count}</div>`; }
         }
-    }
-    function acceptQuest(id) { const q = questDB.find(q => q.id === id); player.activeQuest = { ...q, currentCount: 0 }; window.offeredQuest = null; showMsg(`[${q.title}] 의뢰 수락!`); refreshQuestBoard(); }
-    function completeQuest() { const q = player.activeQuest; player.gold += q.gold; player.exp += q.exp; showMsg(`퀘스트 완료!\n${q.gold} 골드, ${q.exp} 경험치`); player.activeQuest = null; checkLevelUp(); updateStats(); refreshQuestBoard(); }
-    function updateQuestProgress(type, target) {
-        if (!player.activeQuest) return; const q = player.activeQuest;
-        if (q.type === type && q.target === target && q.currentCount < q.count) { q.currentCount++; refreshQuestBoard(); if (q.currentCount >= q.count) showMsg(`[퀘스트 완료] ${q.title}\n마을로 돌아가 보상을 받으세요!`); }
-    }
 
-    function renderInventory() {
-        document.getElementById('slot-weapon').innerHTML = player.inventory.equip.weapon ? `<div title="${itemDB[player.inventory.equip.weapon.id].name}">${itemDB[player.inventory.equip.weapon.id].icon}</div>` : '';
-        document.getElementById('slot-armor').innerHTML = player.inventory.equip.armor ? `<div title="${itemDB[player.inventory.equip.armor.id].name}">${itemDB[player.inventory.equip.armor.id].icon}</div>` : '';
-        const bagContainer = document.getElementById('inv-bag'); bagContainer.innerHTML = ''; document.getElementById('bag-count').innerText = `${player.inventory.bag.length}/12`;
-        for(let i=0; i<12; i++) { const slot = document.createElement('div'); slot.className = "item-slot"; const item = player.inventory.bag[i]; if(item) { slot.innerHTML = `${itemDB[item.id].icon}<span class="item-count">${item.count>1?item.count:''}</span>`; slot.onclick = () => openItemAction('bag', i); } bagContainer.appendChild(slot); }
-        const stashContainer = document.getElementById('inv-stash'); stashContainer.innerHTML = ''; document.getElementById('stash-count').innerText = `${player.inventory.stash.length}/24`;
-        for(let i=0; i<24; i++) { const slot = document.createElement('div'); slot.className = "item-slot"; const item = player.inventory.stash[i]; if(item) { slot.innerHTML = `${itemDB[item.id].icon}<span class="item-count">${item.count>1?item.count:''}</span>`; slot.onclick = () => openItemAction('stash', i); } stashContainer.appendChild(slot); }
-    }
-
-    let currentActionItem = null;
-    function openItemAction(loc, index) {
-        let itemData = (loc === 'bag') ? player.inventory.bag[index] : (loc === 'stash') ? player.inventory.stash[index] : player.inventory.equip[loc];
-        if(!itemData) return; currentActionItem = { loc, index, item: itemData }; const dbInfo = itemDB[itemData.id];
-        document.getElementById('modal-item-icon').innerText = dbInfo.icon; document.getElementById('modal-item-name').innerText = dbInfo.name;
-        document.getElementById('modal-item-desc').innerText = dbInfo.desc + (dbInfo.type==='consumable'||dbInfo.type==='material'?`\n보유: ${itemData.count}개`:'');
-        const actionsDiv = document.getElementById('modal-item-actions'); actionsDiv.innerHTML = '';
-        
-        if(loc === 'weapon' || loc === 'armor') { actionsDiv.innerHTML += `<button class="pixel-btn py-2 text-sm bg-yellow-700" onclick="unequipItem('${loc}')">장착 해제</button>`; }
-        else {
-            if(dbInfo.type === 'weapon' || dbInfo.type === 'armor') actionsDiv.innerHTML += `<button class="pixel-btn py-2 text-sm bg-green-700" onclick="equipItem()">장착하기</button>`;
-            if(dbInfo.type === 'consumable' && loc === 'bag' && !currentDungeon) actionsDiv.innerHTML += `<button class="pixel-btn py-2 text-sm bg-blue-700" onclick="useItemFromModal()">사용하기</button>`;
-            if(loc === 'bag') actionsDiv.innerHTML += `<button class="pixel-btn py-2 text-sm bg-[#444]" onclick="moveItem('bag', 'stash')">창고로 이동</button>`;
-            else if(loc === 'stash') actionsDiv.innerHTML += `<button class="pixel-btn py-2 text-sm bg-[#444]" onclick="moveItem('stash', 'bag')">가방으로 이동</button>`;
+        function drawBackground() {
+            ctx.fillStyle = '#374151'; ctx.fillRect(0, 0, MAP_WIDTH, MAP_HEIGHT); ctx.strokeStyle = 'rgba(250, 204, 21, 0.15)'; ctx.lineWidth = 4;
+            for (let x = 0; x < MAP_WIDTH; x += 200) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, MAP_HEIGHT); ctx.stroke(); }
+            for (let y = 0; y < MAP_HEIGHT; y += 200) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(MAP_WIDTH, y); ctx.stroke(); }
         }
-        document.getElementById('item-modal').classList.remove('hidden');
-    }
 
-    function moveItem(from, to) {
-        if(currentDungeon) return showMsg("던전 안에서는 창고를 열 수 없습니다!"); const item = player.inventory[from][currentActionItem.index];
-        if(to === 'bag' && player.inventory.bag.length >= 12) return showMsg('가방이 꽉 찼습니다!'); if(to === 'stash' && player.inventory.stash.length >= 24) return showMsg('창고가 꽉 찼습니다!');
-        player.inventory[from].splice(currentActionItem.index, 1); addItemToInventory(to, item.id, item.count);
-        document.getElementById('item-modal').classList.add('hidden'); renderInventory();
-    }
+        function gameLoop(timestamp) {
+            if (currentState !== GAME_STATE.PLAYING) return;
+            const dt = timestamp - lastTime; lastTime = timestamp;
 
-    function equipItem() {
-        const item = currentActionItem.item; const dbInfo = itemDB[item.id]; const equipSlot = dbInfo.type;
-        if (!dbInfo.isDrop && !dbInfo.isBossDrop && dbInfo.reqLevel && player.level < dbInfo.reqLevel) return showMsg(`이 장비를 장착하려면 레벨 ${dbInfo.reqLevel} 이상이 필요합니다.`);
-        
-        if(item.count > 1) item.count--; else player.inventory[currentActionItem.loc].splice(currentActionItem.index, 1);
-        if(player.inventory.equip[equipSlot]) {
-            if(player.inventory.bag.length >= 12) { showMsg('가방이 꽉 차 교체 불가!'); addItemToInventory(currentActionItem.loc, item.id, 1); return; }
-            addItemToInventory('bag', player.inventory.equip[equipSlot].id, 1);
+            if (!isSinglePlayer && isGameActive) {
+                syncTimer -= dt;
+                if (syncTimer <= 0) {
+                    syncTimer = 100;
+                    if (player && player.hp > 0 && !player.isDeadProcessed && currentRoomId) {
+                        // 수정사항 4: 다른 플레이어들에게도 내 타이머 값들을 페이로드로 전송하여 완벽한 시각 동기화
+                        db.ref(`rooms/${currentRoomId}/players/${myUid}`).update({ 
+                            x: Math.round(player.x), 
+                            y: Math.round(player.y), 
+                            facingAngle: parseFloat(player.facingAngle.toFixed(2)), 
+                            hp: Math.round(player.hp),
+                            ult: Math.max(0, Math.round(player.ultActiveTimer)),
+                            buff: player.buffStacks,
+                            inv: Math.max(0, Math.round(player.invincibleTimer))
+                        });
+                    }
+                }
+            }
+
+            if(selectedGameMode === 'domination' && isGameActive) {
+                gameTimeRemaining -= dt/1000;
+                if(gameTimeRemaining <= 0) {
+                    if(domScores.blue > domScores.red) endGame("블루팀 승리! (점령전)"); else if(domScores.red > domScores.blue) endGame("레드팀 승리! (점령전)"); else endGame("무승부!");
+                    return;
+                }
+                domPoint.update(dt); updateDominationUI();
+            }
+
+            if((isSinglePlayer || isHost) && isGameActive) { airdropTimer -= dt; if (airdropTimer <= 0) { triggerAirdrop(); airdropTimer = 25000; } }
+
+            if (player.hp > 0 && !player.isDeadProcessed && !isJoystickActive && isGameActive && document.getElementById('quiz-modal-container').style.display !== 'flex') {
+                let dx = 0, dy = 0;
+                if (keys['KeyW'] || keys['ArrowUp']) dy -= 1; if (keys['KeyS'] || keys['ArrowDown']) dy += 1;
+                if (keys['KeyA'] || keys['ArrowLeft']) dx -= 1; if (keys['KeyD'] || keys['ArrowRight']) dx += 1;
+                if (dx !== 0 || dy !== 0) { const length = Math.sqrt(dx*dx + dy*dy); player.vx = dx / length; player.vy = dy / length; } else { player.vx = 0; player.vy = 0; }
+                
+                if (keys['Space'] && (player.ultActiveTimer <= 0 || player.heroType === 'square')) {
+                    let twX = mouseX + camera.x; let twY = mouseY + camera.y;
+                    player.fireProjectile(twX, twY);
+                    if (!isSinglePlayer && currentRoomId) db.ref(`rooms/${currentRoomId}/events/attacks`).push({ uid: myUid, twX: twX, twY: twY });
+                }
+            }
+
+            if (player.hp > 0 && isGameActive) player.update(dt); 
+            if (isGameActive) others.forEach(b => { if(b && b.hp > 0) b.update(dt); });
+            
+            supplyCrates.forEach(c => c.update(dt)); 
+            projectiles.forEach(p => p.update()); projectiles = projectiles.filter(p => p.active);
+            meleeSlashes.forEach(m => m.update(dt)); meleeSlashes = meleeSlashes.filter(m => m.active);
+            explosives.forEach(e => e.update(dt)); explosives = explosives.filter(e => e.active);
+            activeRealms.forEach(r => r.update(dt)); activeRealms = activeRealms.filter(r => r.active);
+            
+            if(player.flashCooldown > 0) updateUI(); 
+            if(isGameActive) checkCollisions();
+
+            if (player.hp > 0 && !player.isDeadProcessed) {
+                camera.x = player.x - viewWidth / 2; camera.y = player.y - viewHeight / 2;
+                camera.x = Math.max(0, Math.min(MAP_WIDTH - viewWidth, camera.x)); camera.y = Math.max(0, Math.min(MAP_HEIGHT - viewHeight, camera.y));
+            }
+
+            ctx.clearRect(0, 0, viewWidth, viewHeight); ctx.save(); ctx.translate(-camera.x, -camera.y);
+
+            drawBackground();
+            domPoint.draw(ctx);
+            activeRealms.forEach(r => r.draw(ctx));
+            respawnZones.forEach(z => z.draw(ctx));
+            containers.forEach(c => c.draw(ctx));
+            heartPacks.forEach(h => h.draw(ctx));
+            supplyCrates.forEach(c => c.draw(ctx));
+            explosives.forEach(e => { if(e.type === 'mine') e.draw(ctx); }); 
+            orbs.forEach(o => o.draw(ctx));
+            
+            if (aimingItem && player.hp > 0 && !player.isDeadProcessed) {
+                let range = (aimingItem === 'grenade' || aimingItem === 'ult_hexagon') ? 600 : (aimingItem === 'ult_ninja' ? 400 : 150); 
+                let color = aimingItem.includes('ult') ? '#fbbf24' : (aimingItem === 'grenade' ? '#fca5a5' : '#d8b4fe'); 
+                ctx.beginPath(); ctx.arc(player.x, player.y, range, 0, Math.PI * 2); ctx.fillStyle = 'rgba(255,255,255,0.05)'; ctx.fill(); ctx.strokeStyle = color; ctx.setLineDash([10, 10]); ctx.lineWidth = 3; ctx.stroke(); ctx.setLineDash([]);
+                let mWorldX = mouseX + camera.x; let mWorldY = mouseY + camera.y; let angle = Math.atan2(mWorldY - player.y, mWorldX - player.x); let dist = Math.min(range, Math.hypot(mWorldX - player.x, mWorldY - player.y));
+                let targetX = player.x + Math.cos(angle) * dist; let targetY = player.y + Math.sin(angle) * dist;
+                ctx.beginPath(); ctx.moveTo(player.x, player.y); ctx.lineTo(targetX, targetY); ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(targetX - 10, targetY - 10); ctx.lineTo(targetX + 10, targetY + 10); ctx.moveTo(targetX + 10, targetY - 10); ctx.lineTo(targetX - 10, targetY + 10); ctx.strokeStyle = color; ctx.lineWidth = 4; ctx.stroke();
+            }
+
+            others.forEach(b => { if(b && b.hp > 0 && !b.isDeadProcessed) b.draw(ctx); });
+            if (player.hp > 0 && !player.isDeadProcessed) player.draw(ctx);
+            
+            meleeSlashes.forEach(m => m.draw(ctx));
+            projectiles.forEach(p => p.draw(ctx)); 
+            explosives.forEach(e => { if(e.type !== 'mine') e.draw(ctx); }); 
+
+            ctx.restore(); 
+            animationFrameId = requestAnimationFrame(gameLoop);
         }
-        player.inventory.equip[equipSlot] = { id: item.id, count: 1 }; document.getElementById('item-modal').classList.add('hidden'); updateStats();
-    }
-
-    function unequipItem(slot) { if(player.inventory.bag.length >= 12) return showMsg('가방이 꽉 차 벗을 수 없습니다.'); addItemToInventory('bag', player.inventory.equip[slot].id, 1); player.inventory.equip[slot] = null; document.getElementById('item-modal').classList.add('hidden'); updateStats(); }
-    function useItemFromModal() { applyItemEffect(currentActionItem.item.id); if(currentActionItem.item.count > 1) currentActionItem.item.count--; else player.inventory.bag.splice(currentActionItem.index, 1); document.getElementById('item-modal').classList.add('hidden'); updateStats(); }
-
-    function openBattleBag() {
-        if(!isBattling) return; const list = document.getElementById('battle-bag-list'); list.innerHTML = ''; const consumables = player.inventory.bag.filter(item => itemDB[item.id].type === 'consumable');
-        if(consumables.length === 0) { list.innerHTML = '<div class="col-span-4 text-center text-gray-500 py-4 text-xs">포션이 없습니다.</div>'; }
-        else {
-            consumables.forEach(item => {
-                const slot = document.createElement('div'); slot.className = "item-slot p-2 cursor-pointer"; slot.innerHTML = `${itemDB[item.id].icon}<span class="item-count">${item.count}</span>`;
-                slot.onclick = () => { applyItemEffect(item.id); item.count--; if(item.count <= 0) player.inventory.bag = player.inventory.bag.filter(i => i !== item); document.getElementById('battle-bag-modal').classList.add('hidden'); updateStats(); logMessage(`🎒 [${itemDB[item.id].name}] 사용 완료!`, 'text-green-300'); setTimeout(monsterTurn, 600); };
-                list.appendChild(slot);
-            });
-        }
-        document.getElementById('battle-bag-modal').classList.remove('hidden');
-    }
-
-    function applyItemEffect(id) { 
-        const info = itemDB[id]; 
-        if(info.healHp) player.hp = Math.min(player.maxHp, player.hp + info.healHp); 
-        if(info.healMp) player.mp = Math.min(player.maxMp, player.mp + info.healMp); 
-        if(info.special && info.special.type === 'buff_atk') { playerBattleStatus.atkBuff = info.special.amount; playerBattleStatus.atkBuffTurns = info.special.turns; logMessage(`💪 [${info.name}] 효과! ${info.special.turns}턴 동안 공격력이 ${info.special.amount} 증가!`, 'text-yellow-400 font-bold'); updateStats(); }
-    }
-    
-    function addItemToInventory(loc, id, count = 1) { if(player.inventory[loc].length >= (loc==='bag'?12:24)) return false; const existing = player.inventory[loc].find(i => i.id === id); if(existing && itemDB[id].type !== 'weapon' && itemDB[id].type !== 'armor') existing.count += count; else player.inventory[loc].push({ id: id, count: count }); return true; }
-
-    function renderShopList(mode) {
-        document.getElementById('tab-buy').className = `pixel-btn flex-1 py-2 text-sm ${mode==='buy'?'bg-blue-900 border-yellow-500':'bg-[#333]'}`; document.getElementById('tab-sell').className = `pixel-btn flex-1 py-2 text-sm ${mode==='sell'?'bg-red-900 border-yellow-500':'bg-[#333]'}`; document.getElementById('shop-title').innerText = mode==='buy' ? '판매 물품 (장비/열쇠)' : '내 가방/창고 (전리품 판매)';
-        const list = document.getElementById('shop-list'); list.innerHTML = '';
-
-        if(mode === 'buy') {
-            Object.values(itemDB).filter(i => (i.type !== 'material' || i.id === 'k1') && (!i.isDrop || i.isBossDrop)).forEach(item => {
-                const reqLvl = item.reqLevel || 1; const canBuy = player.level >= reqLvl;
-                const div = document.createElement('div'); div.className = "pixel-border p-2 bg-[#222] flex justify-between items-center";
-                let btnHtml = '';
-                if(item.isBossDrop) btnHtml = `<button class="pixel-btn text-xs py-1 px-2 bg-purple-900 shrink-0 ml-2 w-16" disabled>드랍</button>`;
-                else if (canBuy) btnHtml = `<button class="pixel-btn text-xs py-1 px-2 bg-yellow-700 shrink-0 ml-2 w-16" onclick="buyItem('${item.id}')">${item.price}🪙</button>`;
-                else btnHtml = `<button class="pixel-btn text-xs py-1 px-2 bg-gray-600 shrink-0 ml-2 w-16" disabled>잠김</button>`;
-                div.innerHTML = `<div class="flex items-center gap-3 ${canBuy || item.isBossDrop ? '' : 'opacity-40 grayscale'}"><div class="w-10 h-10 bg-black border border-gray-700 flex items-center justify-center text-xl shrink-0 relative">${item.icon}</div><div><div class="text-white text-sm">${item.name} ${item.isBossDrop ? `<span class="text-purple-400 text-xs font-bold ml-1">[보스]</span>` : (canBuy?'':`<span class="text-red-400 text-xs font-bold ml-1">[Lv.${reqLvl} 필요]</span>`)}</div><div class="text-[0.6rem] text-gray-400 whitespace-pre-wrap">${item.desc}</div></div></div>${btnHtml}`;
-                list.appendChild(div);
-            });
-        } else {
-            const allItems = []; player.inventory.bag.forEach((it, idx) => allItems.push({ ...it, loc: 'bag', index: idx })); player.inventory.stash.forEach((it, idx) => allItems.push({ ...it, loc: 'stash', index: idx }));
-            if(allItems.length === 0) return list.innerHTML = '<div class="text-center text-gray-500 py-4 text-sm">판매할 아이템이 없습니다.</div>';
-            allItems.forEach(item => {
-                const dbInfo = itemDB[item.id]; const sellPrice = Math.max(1, Math.floor(dbInfo.price * 0.5)); const div = document.createElement('div'); div.className = "pixel-border p-2 bg-[#222] flex justify-between items-center";
-                div.innerHTML = `<div class="flex items-center gap-3"><div class="w-10 h-10 bg-black border border-gray-700 flex items-center justify-center text-xl relative">${dbInfo.icon}${item.count>1?`<span class="item-count">${item.count}</span>`:''}</div><div><div class="text-white text-sm">${dbInfo.name} <span class="text-[10px] text-gray-500">(${item.loc==='bag'?'가방':'창고'})</span></div></div></div><button class="pixel-btn text-xs py-1 px-2 bg-gray-600 w-16" onclick="sellItem('${item.loc}', ${item.index}, ${sellPrice})">+${sellPrice}🪙</button>`; list.appendChild(div);
-            });
-        }
-    }
-    
-    function buyItem(id) { if(player.gold < itemDB[id].price) return showMsg("골드가 부족합니다."); if(!addItemToInventory('bag', id, 1)) return showMsg("가방이 꽉 찼습니다."); player.gold -= itemDB[id].price; renderShopList('buy'); updateStats(); }
-    function sellItem(loc, index, price) { player.gold += price; if(player.inventory[loc][index].count > 1) player.inventory[loc][index].count--; else player.inventory[loc].splice(index, 1); renderShopList('sell'); updateStats(); }
-
-    function renderSkillList() {
-        const list = document.getElementById('skill-list'); list.innerHTML = '';
-        skillDB.forEach(skill => {
-            const isLearned = player.skills.includes(skill.id); const canBuy = player.level >= skill.reqLevel;
-            const div = document.createElement('div'); div.className = `pixel-border p-2 flex justify-between items-center cursor-pointer hover:bg-[#333] border-gray-600`;
-            div.innerHTML = `<div class="flex items-center gap-3 ${canBuy ? '' : 'opacity-40 grayscale'}"><div class="w-12 h-12 bg-black border border-gray-700 flex items-center justify-center text-2xl relative">${skill.icon} ${isLearned?'<div class="absolute -bottom-1 -right-1 bg-red-600 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center">V</div>':''}</div><div><div class="text-white">${skill.name}</div><div class="text-xs ${skill.color}">${skill.type} ${canBuy?'':`<span class="text-red-400 font-bold ml-1">Lv.${skill.reqLevel} 해금</span>`}</div></div></div><button class="pixel-btn text-sm py-1 px-3" onclick="selectSkill('${skill.id}')">정보</button>`; list.appendChild(div);
-        });
-    }
-    
-    function selectSkill(id) {
-        selectedSkill = skillDB.find(s => s.id === id); document.getElementById('detail-name').innerText = selectedSkill.name; document.getElementById('detail-type').innerText = selectedSkill.type; document.getElementById('detail-type').className = `text-xs ${selectedSkill.color}`; document.getElementById('detail-desc').innerText = selectedSkill.desc; document.getElementById('detail-icon').innerText = selectedSkill.icon;
-        const btn = document.getElementById('btn-buy');
-        if(player.skills.includes(selectedSkill.id)) { btn.innerText = "습득 완료"; btn.disabled = true; btn.className = "pixel-btn py-1 text-sm bg-gray-600 opacity-50"; }
-        else if(player.level < selectedSkill.reqLevel) { btn.innerText = `Lv.${selectedSkill.reqLevel} 필요`; btn.disabled = true; btn.className = "pixel-btn py-1 text-sm bg-red-900 opacity-80"; }
-        else { btn.innerHTML = `${selectedSkill.cost.toLocaleString()} 🪙 배우기`; btn.disabled = false; btn.className = "pixel-btn py-1 text-sm bg-yellow-600"; }
-    }
-    
-    function buySkill() { if(!selectedSkill || player.skills.includes(selectedSkill.id)) return; if(player.gold >= selectedSkill.cost) { player.gold -= selectedSkill.cost; player.skills.push(selectedSkill.id); selectedSkill.effect(); updateStats(); selectSkill(selectedSkill.id); renderSkillList(); showMsg(`[${selectedSkill.name}] 습득 완료!`); } else { showMsg("골드가 부족합니다."); } }
-    function restInTown() { if(player.hp >= player.maxHp && player.mp >= player.maxMp) return showMsg("이미 체력과 마나가 가득 차 있습니다."); if(player.gold >= 50) { player.gold -= 50; player.hp = player.maxHp; player.mp = player.maxMp; updateStats(); showMsg("여관에서 푹 쉬었습니다!"); } else { showMsg("골드가 부족합니다."); } }
-
-    window.onload = function() {
-        addItemToInventory('bag', 'w1', 1); addItemToInventory('bag', 'k1', 1); addItemToInventory('bag', 'p1', 2);
-        updateStats(); renderSkillList(); updateAchievementsUI(); refreshQuestBoard(); forceSwitchView('view-quest');
-    };
-</script>
+    </script>
 </body>
 </html>
