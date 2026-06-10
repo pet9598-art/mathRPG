@@ -190,7 +190,7 @@
             </div>
             <div class="pixel-border p-2 flex-1 bg-[#1a1a1d] flex flex-col">
                 <div class="flex justify-between items-center mb-1">
-                    <h3 class="text-xs text-blue-400">창고 (마을 전용)</h3>
+                    <h3 class="text-xs text-blue-400">창고 (마 마을 전용)</h3>
                     <span id="stash-count" class="text-xs text-gray-400">0/24</span>
                 </div>
                 <div id="inv-stash" class="grid grid-cols-6 gap-1 flex-1 overflow-y-auto bg-black p-1 content-start"></div>
@@ -303,12 +303,10 @@
     <!-- Achievements Modal -->
     <div id="achievements-modal" class="hidden fixed inset-0 bg-black/90 flex flex-col items-center justify-center z-[85] p-4">
         <div class="pixel-border bg-[#1a1a1d] p-0 w-full max-w-md h-[85%] flex flex-col relative shadow-[0_0_30px_rgba(255,215,0,0.15)]">
-            <!-- Header -->
             <div class="bg-yellow-900 border-b-4 border-yellow-700 p-3 text-center relative shrink-0">
                 <button class="absolute top-2 right-3 text-yellow-400 hover:text-white text-2xl font-bold" onclick="document.getElementById('achievements-modal').classList.add('hidden')">✖</button>
                 <h2 class="text-xl text-yellow-300 font-bold text-shadow" style="font-family: 'Press Start 2P', monospace; font-size: 1rem;">🏆 도전과제 목록</h2>
             </div>
-            <!-- Subtitle -->
             <div class="bg-[#111] p-2 text-center text-[10px] text-gray-400 shrink-0 border-b border-gray-800">
                 업적을 달성하고 선생님께 교환할 수 있는 학급 화폐를 받으세요!
             </div>
@@ -340,6 +338,7 @@
     };
 
     const enhanceAtkBonus = [0, 3, 8, 18, 38, 88];
+    let isActionLocked = false; // 전투 중 행동 잠금(연타 방지)
 
     const itemDB = {
         // 상점 무기
@@ -420,55 +419,57 @@
         '마왕성': { name: "수학의 대마왕", hp: 6000, atk: 250, def: 100, exp: 1500, gold: 1200, sprite: '👿' }
     };
 
+    // 버프된 퀘스트 데이터 (골드 및 경험치 상향)
     const questDB = [
-        { id: 1, type: 'kill', target: '숫자 슬라임', count: 3, gold: 5, exp: 5, title: "기초 정리", desc: "숫자 슬라임 3마리 처치", reqLevel: 1 },
-        { id: 2, type: 'kill', target: '숲 늑대', count: 2, gold: 8, exp: 6, title: "위협적인 늑대", desc: "숲 늑대 2마리 처치", reqLevel: 2 },
-        { id: 3, type: 'clear', target: '초보자의 숲', count: 1, gold: 15, exp: 12, title: "숲의 정화", desc: "초보자의 숲 보스 처치", reqLevel: 2 },
-        { id: 4, type: 'kill', target: '연산 고블린', count: 3, gold: 10, exp: 10, title: "고블린의 위협", desc: "연산 고블린 3마리 처치", reqLevel: 4 },
-        { id: 5, type: 'clear', target: '고블린 동굴', count: 1, gold: 25, exp: 25, title: "족장 토벌", desc: "고블린 동굴 보스 처치", reqLevel: 5 },
-        { id: 6, type: 'kill', target: '오크 전사', count: 2, gold: 20, exp: 18, title: "오크 토벌대", desc: "오크 전사 2마리 처치", reqLevel: 7 },
-        { id: 7, type: 'clear', target: '악마기사단', count: 1, gold: 100, exp: 50, title: "기사단의 몰락", desc: "기사단장 처치", reqLevel: 10 },
-        { id: 8, type: 'clear', target: '뒤틀린 슬라임 부족', count: 1, gold: 125, exp: 75, title: "도형의 붕괴", desc: "기하학 슬라임 킹 처치", reqLevel: 14 },
-        { id: 9, type: 'clear', target: '마왕성', count: 1, gold: 300, exp: 250, title: "수학의 구원자", desc: "수학의 대마왕 처치", reqLevel: 19 }
+        { id: 1, type: 'kill', target: '숫자 슬라임', count: 3, gold: 50, exp: 30, title: "기초 정리", desc: "숫자 슬라임 3마리 처치", reqLevel: 1 },
+        { id: 2, type: 'kill', target: '숲 늑대', count: 2, gold: 80, exp: 40, title: "위협적인 늑대", desc: "숲 늑대 2마리 처치", reqLevel: 2 },
+        { id: 3, type: 'clear', target: '초보자의 숲', count: 1, gold: 150, exp: 80, title: "숲의 정화", desc: "초보자의 숲 보스 처치", reqLevel: 2 },
+        { id: 4, type: 'kill', target: '연산 고블린', count: 3, gold: 120, exp: 60, title: "고블린의 위협", desc: "연산 고블린 3마리 처치", reqLevel: 4 },
+        { id: 5, type: 'clear', target: '고블린 동굴', count: 1, gold: 250, exp: 120, title: "족장 토벌", desc: "고블린 동굴 보스 처치", reqLevel: 5 },
+        { id: 6, type: 'kill', target: '오크 전사', count: 2, gold: 200, exp: 100, title: "오크 토벌대", desc: "오크 전사 2마리 처치", reqLevel: 7 },
+        { id: 7, type: 'clear', target: '악마기사단', count: 1, gold: 500, exp: 250, title: "기사단의 몰락", desc: "기사단장 처치", reqLevel: 10 },
+        { id: 8, type: 'clear', target: '뒤틀린 슬라임 부족', count: 1, gold: 800, exp: 400, title: "도형의 붕괴", desc: "기하학 슬라임 킹 처치", reqLevel: 14 },
+        { id: 9, type: 'clear', target: '마왕성', count: 1, gold: 2000, exp: 1000, title: "수학의 구원자", desc: "수학의 대마왕 처치", reqLevel: 19 }
     ];
 
+    // 밸런스 조정된 도전과제 데이터 (초반은 골드 보상, 후반은 아이템 보상)
     const achieveDB = [
-        { id: 1, title: "새내기 전사", desc: "레벨 5 달성", type: "level", target: 5, rewardItem: "exp_scroll", rewardCount: 1 },
-        { id: 2, title: "견습 전사", desc: "레벨 10 달성", type: "level", target: 10, rewardItem: "exp_scroll", rewardCount: 2 },
-        { id: 3, title: "숙련된 전사", desc: "레벨 15 달성", type: "level", target: 15, rewardItem: "exp_scroll", rewardCount: 3 },
-        { id: 4, title: "마스터 전사", desc: "레벨 20 달성", type: "level", target: 20, rewardItem: "exp_scroll", rewardCount: 4 },
-        { id: 5, title: "전설의 시작", desc: "레벨 25 달성", type: "level", target: 25, rewardItem: "exp_scroll", rewardCount: 5 },
+        { id: 1, title: "새내기 전사", desc: "레벨 5 달성", type: "level", target: 5, rewardType: "gold", rewardAmount: 300 },
+        { id: 2, title: "견습 전사", desc: "레벨 10 달성", type: "level", target: 10, rewardType: "gold", rewardAmount: 600 },
+        { id: 3, title: "숙련된 전사", desc: "레벨 15 달성", type: "level", target: 15, rewardType: "item", rewardItem: "exp_scroll", rewardCount: 1 },
+        { id: 4, title: "마스터 전사", desc: "레벨 20 달성", type: "level", target: 20, rewardType: "item", rewardItem: "exp_scroll", rewardCount: 3 },
+        { id: 5, title: "전설의 시작", desc: "레벨 25 달성", type: "level", target: 25, rewardType: "item", rewardItem: "exp_scroll", rewardCount: 5 },
         
-        { id: 6, title: "첫 피", desc: "몬스터 10마리 처치", type: "kills", target: 10, rewardItem: "exp_scroll", rewardCount: 1 },
-        { id: 7, title: "학살자 I", desc: "몬스터 50마리 처치", type: "kills", target: 50, rewardItem: "exp_scroll", rewardCount: 2 },
-        { id: 8, title: "학살자 II", desc: "몬스터 100마리 처치", type: "kills", target: 100, rewardItem: "exp_scroll", rewardCount: 3 },
-        { id: 9, title: "학살자 III", desc: "몬스터 300마리 처치", type: "kills", target: 300, rewardItem: "exp_scroll", rewardCount: 4 },
-        { id: 10, title: "몬스터의 재앙", desc: "몬스터 500마리 처치", type: "kills", target: 500, rewardItem: "exp_scroll", rewardCount: 5 },
+        { id: 6, title: "첫 피", desc: "몬스터 10마리 처치", type: "kills", target: 10, rewardType: "gold", rewardAmount: 200 },
+        { id: 7, title: "학살자 I", desc: "몬스터 50마리 처치", type: "kills", target: 50, rewardType: "gold", rewardAmount: 500 },
+        { id: 8, title: "학살자 II", desc: "몬스터 100마리 처치", type: "kills", target: 100, rewardType: "item", rewardItem: "exp_scroll", rewardCount: 1 },
+        { id: 9, title: "학살자 III", desc: "몬스터 300마리 처치", type: "kills", target: 300, rewardType: "item", rewardItem: "exp_scroll", rewardCount: 2 },
+        { id: 10, title: "몬스터의 재앙", desc: "몬스터 500마리 처치", type: "kills", target: 500, rewardType: "item", rewardItem: "exp_scroll", rewardCount: 4 },
         
-        { id: 11, title: "보스 사냥꾼 I", desc: "보스 1마리 처치", type: "bossKills", target: 1, rewardItem: "exp_scroll", rewardCount: 1 },
-        { id: 12, title: "보스 사냥꾼 II", desc: "보스 5마리 처치", type: "bossKills", target: 5, rewardItem: "exp_scroll", rewardCount: 2 },
-        { id: 13, title: "보스 사냥꾼 III", desc: "보스 10마리 처치", type: "bossKills", target: 10, rewardItem: "exp_scroll", rewardCount: 3 },
-        { id: 14, title: "보스 사냥꾼 IV", desc: "보스 30마리 처치", type: "bossKills", target: 30, rewardItem: "exp_scroll", rewardCount: 4 },
-        { id: 15, title: "보스의 재앙", desc: "보스 50마리 처치", type: "bossKills", target: 50, rewardItem: "exp_scroll", rewardCount: 5 },
+        { id: 11, title: "보스 사냥꾼 I", desc: "보스 1마리 처치", type: "bossKills", target: 1, rewardType: "gold", rewardAmount: 300 },
+        { id: 12, title: "보스 사냥꾼 II", desc: "보스 5마리 처치", type: "bossKills", target: 5, rewardType: "item", rewardItem: "exp_scroll", rewardCount: 1 },
+        { id: 13, title: "보스 사냥꾼 III", desc: "보스 10마리 처치", type: "bossKills", target: 10, rewardType: "item", rewardItem: "exp_scroll", rewardCount: 2 },
+        { id: 14, title: "보스 사냥꾼 IV", desc: "보스 30마리 처치", type: "bossKills", target: 30, rewardType: "item", rewardItem: "exp_scroll", rewardCount: 3 },
+        { id: 15, title: "보스의 재앙", desc: "보스 50마리 처치", type: "bossKills", target: 50, rewardType: "item", rewardItem: "exp_scroll", rewardCount: 5 },
         
-        { id: 16, title: "숲의 수호자", desc: "초보자의 숲 클리어", type: "dungeon_clear", targetStr: "초보자의 숲", target: 1, rewardItem: "exp_scroll", rewardCount: 2 },
-        { id: 17, title: "동굴 탐험가", desc: "고블린 동굴 클리어", type: "dungeon_clear", targetStr: "고블린 동굴", target: 1, rewardItem: "exp_scroll", rewardCount: 2 },
-        { id: 18, title: "부락 파괴자", desc: "오크 부락 클리어", type: "dungeon_clear", targetStr: "오크 부락", target: 1, rewardItem: "exp_scroll", rewardCount: 3 },
-        { id: 19, title: "기사단의 몰락", desc: "악마기사단 클리어", type: "dungeon_clear", targetStr: "악마기사단", target: 1, rewardItem: "silver_coin", rewardCount: 1 },
-        { id: 20, title: "도형의 붕괴", desc: "뒤틀린 슬라임 부족 클리어", type: "dungeon_clear", targetStr: "뒤틀린 슬라임 부족", target: 1, rewardItem: "silver_coin", rewardCount: 2 },
-        { id: 21, title: "수학의 구원자", desc: "마왕성 클리어", type: "dungeon_clear", targetStr: "마왕성", target: 1, rewardItem: "silver_coin", rewardCount: 3 },
+        { id: 16, title: "숲의 수호자", desc: "초보자의 숲 클리어", type: "dungeon_clear", targetStr: "초보자의 숲", target: 1, rewardType: "gold", rewardAmount: 500 },
+        { id: 17, title: "동굴 탐험가", desc: "고블린 동굴 클리어", type: "dungeon_clear", targetStr: "고블린 동굴", target: 1, rewardType: "gold", rewardAmount: 800 },
+        { id: 18, title: "부락 파괴자", desc: "오크 부락 클리어", type: "dungeon_clear", targetStr: "오크 부락", target: 1, rewardType: "item", rewardItem: "exp_scroll", rewardCount: 2 },
+        { id: 19, title: "기사단의 몰락", desc: "악마기사단 클리어", type: "dungeon_clear", targetStr: "악마기사단", target: 1, rewardType: "item", rewardItem: "silver_coin", rewardCount: 1 },
+        { id: 20, title: "도형의 붕괴", desc: "뒤틀린 슬라임 부족 클리어", type: "dungeon_clear", targetStr: "뒤틀린 슬라임 부족", target: 1, rewardType: "item", rewardItem: "silver_coin", rewardCount: 2 },
+        { id: 21, title: "수학의 구원자", desc: "마왕성 클리어", type: "dungeon_clear", targetStr: "마왕성", target: 1, rewardType: "item", rewardItem: "silver_coin", rewardCount: 3 },
         
-        { id: 22, title: "수전노 I", desc: "누적 1,000 골드 획득", type: "gold", target: 1000, rewardItem: "exp_scroll", rewardCount: 1 },
-        { id: 23, title: "수전노 II", desc: "누적 5,000 골드 획득", type: "gold", target: 5000, rewardItem: "exp_scroll", rewardCount: 2 },
-        { id: 24, title: "수전노 III", desc: "누적 10,000 골드 획득", type: "gold", target: 10000, rewardItem: "exp_scroll", rewardCount: 3 },
-        { id: 25, title: "갑부", desc: "누적 50,000 골드 획득", type: "gold", target: 50000, rewardItem: "silver_coin", rewardCount: 1 },
+        { id: 22, title: "수전노 I", desc: "누적 2,000 골드 획득", type: "gold", target: 2000, rewardType: "item", rewardItem: "exp_scroll", rewardCount: 1 },
+        { id: 23, title: "수전노 II", desc: "누적 10,000 골드 획득", type: "gold", target: 10000, rewardType: "item", rewardItem: "exp_scroll", rewardCount: 2 },
+        { id: 24, title: "수전노 III", desc: "누적 30,000 골드 획득", type: "gold", target: 30000, rewardType: "item", rewardItem: "silver_coin", rewardCount: 1 },
+        { id: 25, title: "갑부", desc: "누적 100,000 골드 획득", type: "gold", target: 100000, rewardType: "item", rewardItem: "silver_coin", rewardCount: 3 },
         
-        { id: 26, title: "대장장이의 첫 걸음", desc: "무기 강화 1회 시도", type: "enhance", target: 1, rewardItem: "exp_scroll", rewardCount: 1 },
-        { id: 27, title: "열혈 대장장이", desc: "무기 강화 10회 시도", type: "enhance", target: 10, rewardItem: "exp_scroll", rewardCount: 2 },
-        { id: 28, title: "장인 정신", desc: "무기 강화 30회 시도", type: "enhance", target: 30, rewardItem: "exp_scroll", rewardCount: 3 },
+        { id: 26, title: "대장장이의 첫 걸음", desc: "무기 강화 1회 시도", type: "enhance", target: 1, rewardType: "gold", rewardAmount: 500 },
+        { id: 27, title: "열혈 대장장이", desc: "무기 강화 10회 시도", type: "enhance", target: 10, rewardType: "item", rewardItem: "exp_scroll", rewardCount: 1 },
+        { id: 28, title: "장인 정신", desc: "무기 강화 30회 시도", type: "enhance", target: 30, rewardType: "item", rewardItem: "exp_scroll", rewardCount: 3 },
         
-        { id: 29, title: "학구열 I", desc: "진리(스킬) 1개 습득", type: "skills", target: 1, rewardItem: "exp_scroll", rewardCount: 1 },
-        { id: 30, title: "학구열 II", desc: "진리(스킬) 3개 습득", type: "skills", target: 3, rewardItem: "exp_scroll", rewardCount: 2 }
+        { id: 29, title: "학구열 I", desc: "진리(스킬) 1개 습득", type: "skills", target: 1, rewardType: "gold", rewardAmount: 600 },
+        { id: 30, title: "학구열 II", desc: "진리(스킬) 3개 습득", type: "skills", target: 3, rewardType: "item", rewardItem: "exp_scroll", rewardCount: 2 }
     ];
 
     let currentMonster = null, isBattling = false, currentDungeon = null, currentMapData = null, currentNodeId = null, clearedNodes = [], isBossBattle = false;
@@ -580,7 +581,13 @@
 
             const isCompleted = currentVal >= ach.target;
             const isClaimed = player.claimedMissions.includes(ach.id);
-            const rewardIcon = itemDB[ach.rewardItem].icon;
+            
+            let rewardText = "";
+            if (ach.rewardType === 'gold') {
+                rewardText = `보상: 🪙 ${ach.rewardAmount.toLocaleString()} 골드`;
+            } else {
+                rewardText = `보상: ${itemDB[ach.rewardItem].icon} ${itemDB[ach.rewardItem].name} x${ach.rewardCount}`;
+            }
 
             const div = document.createElement('div');
             div.className = `pixel-border p-2 flex justify-between items-center ${isClaimed ? 'bg-[#111] border-gray-800 opacity-60 grayscale' : (isCompleted ? 'bg-[#2a2a20] border-yellow-600' : 'bg-[#222] border-gray-700')}`;
@@ -598,7 +605,7 @@
                 <div class="flex-1 pr-2">
                     <div class="text-xs ${isCompleted && !isClaimed ? 'text-yellow-300' : 'text-yellow-500'} font-bold mb-1 drop-shadow-md">${ach.title}</div>
                     <div class="text-[10px] text-gray-300 leading-tight mb-1">${ach.desc}</div>
-                    <div class="text-[10px] text-blue-300 flex items-center gap-1 font-bold">보상: ${rewardIcon} ${itemDB[ach.rewardItem].name} x${ach.rewardCount}</div>
+                    <div class="text-[10px] text-blue-300 flex items-center gap-1 font-bold">${rewardText}</div>
                 </div>
                 ${btnHtml}
             `;
@@ -610,22 +617,26 @@
         const ach = achieveDB.find(a => a.id === id);
         if(!ach || player.claimedMissions.includes(id)) return;
         
-        let success = true;
-        for(let i=0; i<ach.rewardCount; i++) {
-            if(!addItemToInventory('bag', ach.rewardItem, 1)) {
-                if(!addItemToInventory('stash', ach.rewardItem, 1)) {
-                    success = false;
+        if (ach.rewardType === 'gold') {
+            addGold(ach.rewardAmount);
+            showMsg(`[업적 달성!]\n${ach.rewardAmount.toLocaleString()} 골드를 획득했습니다.`);
+        } else {
+            let success = true;
+            for(let i=0; i<ach.rewardCount; i++) {
+                if(!addItemToInventory('bag', ach.rewardItem, 1)) {
+                    if(!addItemToInventory('stash', ach.rewardItem, 1)) {
+                        success = false;
+                    }
                 }
             }
-        }
-        
-        if(!success) {
-            showMsg("가방과 창고가 모두 꽉 찼습니다! 공간을 비워주세요.");
-            return;
+            if(!success) {
+                showMsg("가방과 창고가 모두 꽉 찼습니다! 공간을 비워주세요.");
+                return;
+            }
+            showMsg(`[업적 달성!]\n${itemDB[ach.rewardItem].name} ${ach.rewardCount}개를 획득했습니다.`);
         }
 
         player.claimedMissions.push(id);
-        showMsg(`[업적 달성!]\n${itemDB[ach.rewardItem].name} ${ach.rewardCount}개를 획득했습니다.`);
         updateStats();
         renderAchievementsList();
     }
@@ -791,7 +802,7 @@
         currentDungeon = name; dungeonGainedExp = 0; dungeonGainedGold = 0;
         document.getElementById('dungeon-select').classList.add('hidden'); 
         currentMapData = generateMapPattern(name);
-        clearedNodes = ['start']; currentNodeId = 'start'; isBossBattle = false;
+        clearedNodes = ['start']; currentNodeId = 'start'; isBossBattle = false; isActionLocked = false;
         document.getElementById('dungeon-map-view').classList.remove('hidden'); document.getElementById('map-dungeon-name').innerText = name;
         const bg = document.getElementById('battle-scene-bg');
         if(name === '마왕성') bg.style.background = 'linear-gradient(to bottom, #4a0000, #111)'; else bg.style.background = '#111';
@@ -805,7 +816,7 @@
                 player.exp = Math.max(0, player.exp - expPen); 
                 showMsg(`[도망침]\n얻은 경험치 ${expPen}을(를) 잃었습니다.\n(가져온 골드 ${dungeonGainedGold}G는 무사합니다!)`); 
             }
-            isBattling = false; isBossBattle = false; currentDungeon = null; currentMapData = null;
+            isBattling = false; isBossBattle = false; currentDungeon = null; currentMapData = null; isActionLocked = false;
             document.getElementById('battle-field').classList.add('hidden'); document.getElementById('dungeon-map-view').classList.add('hidden');
             document.getElementById('event-view').classList.add('hidden'); document.getElementById('dungeon-select').classList.remove('hidden');
             document.getElementById('confirm-modal').classList.add('hidden');
@@ -892,6 +903,7 @@
         clearedNodes.push(currentNodeId); 
         document.getElementById('event-view').classList.add('hidden'); 
         document.getElementById('battle-field').classList.add('hidden');
+        isActionLocked = false;
         
         if (player.inventory.equip.armor && itemDB[player.inventory.equip.armor.id].special?.type === 'heal_on_clear') {
             const healAmount = itemDB[player.inventory.equip.armor.id].special.heal;
@@ -915,6 +927,7 @@
     function startBattle(isBoss) {
         document.getElementById('battle-field').classList.remove('hidden'); els.log.innerHTML = '<div class="text-yellow-400">전투 시작!</div>'; isBattling = true;
         playerBattleStatus = { atkBuff: 0, atkBuffTurns: 0, defBuff: 0, defBuffTurns: 0 }; 
+        isActionLocked = false;
         
         if (isBoss) { currentMonster = { ...bosses[currentDungeon] }; els.mSprite.classList.add('scale-150', 'text-red-500'); } 
         else { const dMons = monsters.filter(m => m.dungeon === currentDungeon); currentMonster = { ...dMons[Math.floor(Math.random() * dMons.length)] }; els.mSprite.classList.remove('scale-150', 'text-red-500'); }
@@ -929,6 +942,7 @@
     function startMimicBattle() {
         document.getElementById('battle-field').classList.remove('hidden'); els.log.innerHTML = '<div class="text-purple-400">함정 발동! 상자가 미믹이었습니다!</div>'; isBattling = true; isBossBattle = false;
         currentMonster = { name: "미믹", level: 10, hp: 300, maxHp: 300, atk: 40, def: 15, exp: 200, gold: 300, sprite: '🧰', drop: 'k1', status: {bleed:0, paralyze:false}, turnCount: 0 };
+        isActionLocked = false;
         els.mSprite.classList.remove('scale-150', 'text-red-500'); els.mName.innerText = currentMonster.name; els.mSprite.innerText = currentMonster.sprite; updateMonsterHp();
     }
 
@@ -944,7 +958,8 @@
     }
     
     function attack() {
-        if (!isBattling || player.hp <= 0) return;
+        if (!isBattling || player.hp <= 0 || isActionLocked) return;
+        isActionLocked = true; // 적의 턴이 끝날 때까지 조작 금지
         
         if (currentMonster.physicalImmune) {
             logMessage(`🛡️ 일반 물리 타격이 <span class="text-red-400">무효화</span> 되었습니다! (진리/마법 필요)`, 'text-gray-400 font-bold');
@@ -980,7 +995,7 @@
     }
 
     function openBattleSkill() {
-        if(!isBattling) return; const list = document.getElementById('battle-skill-list-container'); list.innerHTML = ''; 
+        if(!isBattling || isActionLocked) return; const list = document.getElementById('battle-skill-list-container'); list.innerHTML = ''; 
         const activeSkills = player.skills.map(id => skillDB.find(s => s.id === id)).filter(s => s && s.type === "마법(액티브)");
         
         if(activeSkills.length === 0) { list.innerHTML = '<div class="text-center text-gray-500 py-4 text-xs">배운 마법이 없습니다.</div>'; }
@@ -989,7 +1004,7 @@
                 const btn = document.createElement('button');
                 btn.className = "pixel-btn p-2 flex flex-col items-center border-gray-600 bg-[#222]";
                 btn.innerHTML = `<span class="text-lg ${skill.color}">${skill.icon} ${skill.name}</span><span class="text-[0.6rem] text-gray-400 mt-1">${skill.desc}</span>`;
-                btn.onclick = () => { castSkill(skill.id); document.getElementById('battle-skill-modal').classList.add('hidden'); };
+                btn.onclick = () => { document.getElementById('battle-skill-modal').classList.add('hidden'); castSkill(skill.id); };
                 list.appendChild(btn);
             });
         }
@@ -997,7 +1012,8 @@
     }
 
     function castSkill(skillId) {
-        if (!isBattling || player.hp <= 0) return;
+        if (!isBattling || player.hp <= 0 || isActionLocked) return;
+        isActionLocked = true; // 스킬 사용 중 잠금
         let mpCost = 0; let castSuccess = false;
         
         if(skillId === 's2' && player.mp >= 20) {
@@ -1012,13 +1028,13 @@
             castSuccess = true;
         } else if(skillId === 's5' && player.mp >= 25) {
             mpCost = 25; player.hp = Math.min(player.maxHp, player.hp + 100); playerBattleStatus.defBuff = 30; playerBattleStatus.defBuffTurns = 3;
-            logMessage(`🔰 [절대값 쉴드] 체력 100 회 회복 & 3턴간 방어력 +30!`, 'text-green-400 font-bold'); castSuccess = true;
+            logMessage(`🔰 [절대값 쉴드] 체력 100 회복 & 3턴간 방어력 +30!`, 'text-green-400 font-bold'); castSuccess = true;
         } else if(skillId === 's6' && player.mp >= 80) {
             mpCost = 80; let dmg = Math.floor(getTotalAtk() * 5.0); currentMonster.hp -= dmg; 
             logMessage(`☄️ [운석의 기하학] 하늘에서 거대한 메테오가 떨어집니다! 방어를 무시하고 <span class="text-red-500 font-bold text-xl">${dmg}</span> 피해!`); castSuccess = true;
         }
 
-        if(!castSuccess) return showMsg("MP가 부족하거나 스킬을 시전할 수 없습니다.");
+        if(!castSuccess) { isActionLocked = false; return showMsg("MP가 부족하거나 스킬을 시전할 수 없습니다."); }
         
         player.mp -= mpCost; updateStats(); updateMonsterHp();
         els.mSprite.style.transform = 'scale(1.2) rotate(10deg) brightness(2)'; setTimeout(() => els.mSprite.style.transform = '', 150);
@@ -1026,7 +1042,7 @@
     }
 
     function monsterTurn() {
-        if (!isBattling || player.hp <= 0 || currentMonster.hp <= 0) return;
+        if (!isBattling || player.hp <= 0 || currentMonster.hp <= 0) { isActionLocked = false; return; }
         currentMonster.turnCount++;
 
         if(playerBattleStatus.atkBuffTurns > 0) { playerBattleStatus.atkBuffTurns--; if(playerBattleStatus.atkBuffTurns <= 0) { playerBattleStatus.atkBuff = 0; logMessage(`공격력 버프가 사라졌습니다.`, 'text-gray-400'); updateStats(); } }
@@ -1040,16 +1056,16 @@
         }
 
         if(currentMonster.status && currentMonster.status.paralyze) {
-            logMessage(`⚡ ${currentMonster.name}은(는) 마비되어 움직일 수 없습니다!`, 'text-purple-400'); currentMonster.status.paralyze = false; updateMonsterHp(); return;
+            logMessage(`⚡ ${currentMonster.name}은(는) 마비되어 움직일 수 없습니다!`, 'text-purple-400'); currentMonster.status.paralyze = false; updateMonsterHp(); isActionLocked = false; return;
         }
 
         if(currentMonster.name === "수학의 대마왕") {
-            if(currentMonster.turnCount % 4 === 3) { currentMonster.hp = Math.min(currentMonster.maxHp, currentMonster.hp + 300); updateMonsterHp(); logMessage(`👿 대마왕이 [암흑 연산]으로 체력을 300 회복합니다!`, 'text-purple-400 font-bold'); return; }
+            if(currentMonster.turnCount % 4 === 3) { currentMonster.hp = Math.min(currentMonster.maxHp, currentMonster.hp + 300); updateMonsterHp(); logMessage(`👿 대마왕이 [암흑 연산]으로 체력을 300 회복합니다!`, 'text-purple-400 font-bold'); isActionLocked = false; return; }
             if(currentMonster.turnCount % 4 === 0) {
                 let dmg = Math.max(1, (currentMonster.atk * 2) - Math.floor(getTotalDef() / 2)); player.hp -= dmg;
                 logMessage(`☄️ 대마왕의 궁극기! [차원 붕괴] 방어력을 관통하여 ${dmg} 피해!`, 'text-red-500 font-bold text-lg');
                 document.body.style.backgroundColor = '#550000'; setTimeout(() => document.body.style.backgroundColor = '#1a1a1a', 150);
-                updateStats(); if (player.hp <= 0) die(); return;
+                updateStats(); if (player.hp <= 0) die(); else isActionLocked = false; return;
             }
         }
 
@@ -1057,10 +1073,11 @@
         document.body.style.backgroundColor = '#420000'; setTimeout(() => document.body.style.backgroundColor = '#1a1a1a', 100);
         logMessage(`💥 ${currentMonster.name}의 반격! ${dmg} 피해.`, 'text-red-400');
         if (player.hp <= 0) die();
+        else isActionLocked = false; // 행동 잠금 해제 (플레이어 턴)
     }
 
     function winBattle() {
-        isBattling = false; const exp = currentMonster.exp; const gold = currentMonster.gold;
+        isBattling = false; isActionLocked = false; const exp = currentMonster.exp; const gold = currentMonster.gold;
         player.exp += exp; addGold(gold); dungeonGainedGold += gold; dungeonGainedExp += exp;
         player.stats.kills++; // 킬 수 증가
         logMessage(`🏆 승리! 경험치 ${exp}, 골드 ${gold} 획득!`, 'text-yellow-400'); 
@@ -1094,7 +1111,7 @@
 
     function die() {
         try {
-            isBattling = false; currentDungeon = null; showMsg("💀 눈 앞이 깜깜해졌다... 마을로 귀환합니다.");
+            isBattling = false; currentDungeon = null; isActionLocked = false; showMsg("💀 눈 앞이 깜깜해졌다... 마을로 귀환합니다.");
             player.hp = player.maxHp * 0.1; player.exp = Math.max(0, player.exp - (player.maxExp * 0.1)); updateStats();
             document.getElementById('battle-field').classList.add('hidden'); document.getElementById('dungeon-map-view').classList.add('hidden');
             document.getElementById('event-view').classList.add('hidden'); document.getElementById('dungeon-select').classList.remove('hidden');
@@ -1151,7 +1168,11 @@
 
     let currentActionItem = null;
     function openItemAction(loc, index) {
-        let itemData = (loc === 'bag') ? player.inventory.bag[index] : (loc === 'stash') ? player.inventory.stash[index] : player.inventory.equip[loc];
+        let itemData;
+        if (loc === 'equip') { itemData = player.inventory.equip[index]; }
+        else if (loc === 'bag') { itemData = player.inventory.bag[index]; }
+        else if (loc === 'stash') { itemData = player.inventory.stash[index]; }
+        
         if(!itemData) return; currentActionItem = { loc, index, item: itemData }; const dbInfo = itemDB[itemData.id];
         
         document.getElementById('modal-item-icon').innerHTML = `${dbInfo.icon}${itemData.enhance?`<span class="absolute top-0 left-1 text-[10px] text-yellow-400 font-bold text-shadow px-1">+${itemData.enhance}</span>`:''}`; 
@@ -1164,10 +1185,10 @@
         
         const actionsDiv = document.getElementById('modal-item-actions'); actionsDiv.innerHTML = '';
         
-        if(loc === 'weapon' || loc === 'armor') { actionsDiv.innerHTML += `<button class="pixel-btn py-2 text-sm bg-yellow-700" onclick="unequipItem('${loc}')">장착 해제</button>`; }
-        else {
+        if(loc === 'equip') { 
+            actionsDiv.innerHTML += `<button class="pixel-btn py-2 text-sm bg-yellow-700" onclick="unequipItem('${index}')">장착 해제</button>`; 
+        } else {
             if(dbInfo.isRealCurrency) {
-                // 현실 화폐 버리기(소모) 버튼 추가
                 actionsDiv.innerHTML += `<button class="pixel-btn py-3 text-sm bg-purple-800 border-purple-400 font-bold animate-pulse shadow-[0_0_15px_rgba(168,85,247,0.4)]" onclick="discardRealCurrency('${loc}')">🎁 선생님께 보상 받기 (버리기)</button>`;
             } else {
                 if(dbInfo.type === 'weapon' || dbInfo.type === 'armor') actionsDiv.innerHTML += `<button class="pixel-btn py-2 text-sm bg-green-700" onclick="equipItem()">장착하기</button>`;
@@ -1212,7 +1233,13 @@
         document.getElementById('item-modal').classList.add('hidden'); updateStats();
     }
 
-    function unequipItem(slot) { if(player.inventory.bag.length >= 12) return showMsg('가방이 꽉 차 벗을 수 없습니다.'); addItemToInventoryObj('bag', player.inventory.equip[slot]); player.inventory.equip[slot] = null; document.getElementById('item-modal').classList.add('hidden'); updateStats(); }
+    function unequipItem(slot) { 
+        if(player.inventory.bag.length >= 12) return showMsg('가방이 꽉 차 벗을 수 없습니다.'); 
+        addItemToInventoryObj('bag', player.inventory.equip[slot]); 
+        player.inventory.equip[slot] = null; 
+        document.getElementById('item-modal').classList.add('hidden'); 
+        updateStats(); 
+    }
     
     function useItemFromModal() { 
         applyItemEffect(currentActionItem.item.id); 
@@ -1223,12 +1250,16 @@
     }
 
     function openBattleBag() {
-        if(!isBattling) return; const list = document.getElementById('battle-bag-list'); list.innerHTML = ''; const consumables = player.inventory.bag.filter(item => itemDB[item.id].type === 'consumable');
+        if(!isBattling || isActionLocked) return; const list = document.getElementById('battle-bag-list'); list.innerHTML = ''; const consumables = player.inventory.bag.filter(item => itemDB[item.id].type === 'consumable');
         if(consumables.length === 0) { list.innerHTML = '<div class="col-span-4 text-center text-gray-500 py-4 text-xs">포션이 없습니다.</div>'; }
         else {
             consumables.forEach(item => {
                 const slot = document.createElement('div'); slot.className = "item-slot p-2 cursor-pointer"; slot.innerHTML = `${itemDB[item.id].icon}<span class="item-count">${item.count}</span>`;
-                slot.onclick = () => { applyItemEffect(item.id); item.count--; if(item.count <= 0) player.inventory.bag = player.inventory.bag.filter(i => i !== item); document.getElementById('battle-bag-modal').classList.add('hidden'); updateStats(); logMessage(`🎒 [${itemDB[item.id].name}] 사용 완료!`, 'text-green-300'); setTimeout(monsterTurn, 600); };
+                slot.onclick = () => { 
+                    if(isActionLocked) return;
+                    isActionLocked = true; // 아이템 사용 중 잠금
+                    applyItemEffect(item.id); item.count--; if(item.count <= 0) player.inventory.bag = player.inventory.bag.filter(i => i !== item); document.getElementById('battle-bag-modal').classList.add('hidden'); updateStats(); logMessage(`🎒 [${itemDB[item.id].name}] 사용 완료!`, 'text-green-300'); setTimeout(monsterTurn, 600); 
+                };
                 list.appendChild(slot);
             });
         }
