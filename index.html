@@ -559,8 +559,16 @@
 
         try {
             const docSnap = await getDoc(saveRef);
-            if (docSnap.exists() && docSnap.data().pw !== pw) {
-                return showMsg("비밀번호가 일치하지 않습니다.");
+            if (docSnap.exists()) {
+                if (docSnap.data().pw !== pw) {
+                    return showMsg("비밀번호가 일치하지 않습니다.");
+                }
+                
+                const savedPlayer = JSON.parse(docSnap.data().data);
+                // 기존 저장된 데이터의 레벨이 현재 레벨보다 높으면 덮어쓰기 차단
+                if (savedPlayer.level > player.level) {
+                    return showMsg(`⚠️ 덮어쓰기 방지됨!\n\n클라우드에 더 높은 레벨(Lv.${savedPlayer.level})의 데이터가 있습니다.\n실수를 방지하기 위해 현재 레벨(Lv.${player.level}) 정보로 덮어쓸 수 없습니다.\n\n'불러오기'를 먼저 진행해주세요.`);
+                }
             }
             
             await setDoc(saveRef, { pw: pw, data: JSON.stringify(player) });
