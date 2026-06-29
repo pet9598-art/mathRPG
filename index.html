@@ -554,35 +554,41 @@
     // Firebase Setup
     let db = null;
     let currentUser = null;
+    let firestoreLib = null;
     const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
     
-    import("https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js").then(async (firebaseApp) => {
-        const firebaseConfig = {
-            apiKey: "AIzaSyCacxSyxofZEZk51sFakd-MtAh1THBwiVI",
-            authDomain: "mathrpg-670c3.firebaseapp.com",
-            projectId: "mathrpg-670c3",
-            storageBucket: "mathrpg-670c3.firebasestorage.app",
-            messagingSenderId: "618643401567",
-            appId: "1:618643401567:web:fcabd1e5310815869de4ea"
-        };
-        const app = firebaseApp.initializeApp(firebaseConfig);
-        const firebaseAuth = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js");
-        const auth = firebaseAuth.getAuth(app);
-        const firestore = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
-        
-        db = firestore.getFirestore(app);
-        window.firestoreLib = firestore;
-
+    async function initFirebase() {
         try {
-            await firebaseAuth.signInAnonymously(auth);
+            const firebaseApp = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js");
+            const firebaseAuth = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js");
+            const firestore = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
+            
+            // 환경 변수에서 동적으로 Firebase 설정을 불러옵니다.
+            const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+            const app = firebaseApp.initializeApp(firebaseConfig);
+            const auth = firebaseAuth.getAuth(app);
+            db = firestore.getFirestore(app);
+            firestoreLib = firestore;
+
+            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                try {
+                    await firebaseAuth.signInWithCustomToken(auth, __initial_auth_token);
+                } catch (err) {
+                    console.warn("토큰 불일치 오류 발생, 익명 로그인으로 우회합니다.", err);
+                    await firebaseAuth.signInAnonymously(auth);
+                }
+            } else {
+                await firebaseAuth.signInAnonymously(auth);
+            }
+
+            firebaseAuth.onAuthStateChanged(auth, (user) => {
+                currentUser = user;
+            });
         } catch (e) {
             console.error("Firebase Auth Error:", e);
         }
-
-        firebaseAuth.onAuthStateChanged(auth, (user) => {
-            currentUser = user;
-        });
-    });
+    }
+    initFirebase();
 
     const ADMIN_PASSWORD = "7789"; // 시스템 관리자 암호 (필요시 수정)
 
@@ -610,9 +616,9 @@
         const def = parseInt(document.getElementById('rec-def').value) || 5;
 
         if(!name || !pw) return showMsg("계정 이름과 새 비밀번호를 반드시 입력해야 합니다.");
-        if (!db || !currentUser || !window.firestoreLib) return showMsg("클라우드 서버에 연결 중입니다. 잠시 후 다시 시도해주세요.");
+        if (!db || !currentUser || !firestoreLib) return showMsg("클라우드 서버에 연결 중입니다. 잠시 후 다시 시도해주세요.");
 
-        const { doc, getDoc, setDoc } = window.firestoreLib;
+        const { doc, getDoc, setDoc } = firestoreLib;
         const saveRef = doc(db, 'artifacts', appId, 'public', 'data', 'saves', name);
 
         document.getElementById('recovery-modal').classList.add('hidden');
@@ -663,38 +669,64 @@
         const name = document.getElementById('save-name').value.trim();
         const pw = document.getElementById('save-pw').value.trim();
         if(!name || !pw) return showMsg("이름과 비밀번호를 입력해주세요.");
-        let saves = getSaves();
-        if(saves[name] && saves[name].pw !== pw) return showMsg("비밀번호가 일치하지 않습니다.");
         
-        if (saves[name] && saves[name].data) {
-            let savedPlayer = JSON.parse(saves[name].data);
-            if (savedPlayer.level > player.level) {
-                return showMsg("⚠️ 더 높은 레벨의 데이터가 서버에 존재하여 덮어쓰기를 차단했습니다.\n[불러오기]를 통해 이전 캐릭터를 복구하세요.");
-            }
-        }
+        if (!db || !currentUser || !firestoreLib) return showMsg("클라우드 서버에 연결 중입니다. 잠시 후 다시 시도해주세요.");
 
-        saves[name] = { pw: pw, data: JSON.stringify(player) }; 
-        localStorage.setItem('retro_rpg_saves', JSON.stringify(saves));
-        showMsg("성공적으로 게임 데이터가 저장되었습니다!\n(기기를 변경하거나 캐시를 지우면 데이터가 유실될 수 있습니다.)");
+        const { doc, getDoc, setDoc } = firestoreLib;
+        const saveRef = doc(db, 'artifacts', appId, 'public', 'data', 'saves', name);
+
         document.getElementById('save-modal').classList.add('hidden');
+        showMsg("클라우드에 데이터를 저장하는 중입니다...");
+
+        try {
+            const docSnap = await getDoc(saveRef);
+            if (docSnap.exists() && docSnap.data().pw !== pw) {
+                return showMsg("비밀번호가 일치하지 않습니다.");
+            }
+            if (docSnap.exists() && docSnap.data().data) {
+                let savedPlayer = JSON.parse(docSnap.data().data);
+                if (savedPlayer.level > player.level) {
+                    return showMsg("⚠️ 더 높은 레벨의 데이터가 서버에 존재하여 덮어쓰기를 차단했습니다.\n[불러오기]를 통해 이전 캐릭터를 복구하세요.");
+                }
+            }
+            
+            await setDoc(saveRef, { pw: pw, data: JSON.stringify(player) });
+            showMsg("성공적으로 클라우드에 게임 데이터가 저장되었습니다!\n(기기를 변경해도 이어서 플레이할 수 있습니다.)");
+        } catch (e) {
+            console.error(e);
+            showMsg("클라우드 저장 중 오류가 발생했습니다. 권한이 없거나 네트워크 문제입니다.");
+        }
     }
 
-    function loadGame() {
+    async function loadGame() {
         const name = document.getElementById('save-name').value.trim();
         const pw = document.getElementById('save-pw').value.trim();
         if(!name || !pw) return showMsg("이름과 비밀번호를 입력해주세요.");
-        let saves = getSaves();
-        if(!saves[name]) return showMsg("해당 이름의 저장 데이터가 없습니다.");
-        if(saves[name].pw !== pw) return showMsg("비밀번호가 일치하지 않습니다.");
         
-        player = JSON.parse(saves[name].data);
-        
-        isBattling = false; isBossBattle = false; isActionLocked = false; currentDungeon = null; currentMapData = null;
-        updateStats(); renderInventory(); renderSkillList(); updateAchievementsUI(); refreshQuestBoard(false);
-        forceSwitchView('view-quest');
-        
-        showMsg(`${name} 전사님의 데이터를 성공적으로 불러왔습니다!`);
+        if (!db || !currentUser || !firestoreLib) return showMsg("클라우드 서버에 연결 중입니다. 잠시 후 다시 시도해주세요.");
+
+        const { doc, getDoc } = firestoreLib;
+        const saveRef = doc(db, 'artifacts', appId, 'public', 'data', 'saves', name);
+
         document.getElementById('save-modal').classList.add('hidden');
+        showMsg("클라우드에서 데이터를 불러오는 중입니다...");
+
+        try {
+            const docSnap = await getDoc(saveRef);
+            if (!docSnap.exists()) return showMsg("해당 이름의 저장 데이터가 없습니다.");
+            if (docSnap.data().pw !== pw) return showMsg("비밀번호가 일치하지 않습니다.");
+            
+            player = JSON.parse(docSnap.data().data);
+            
+            isBattling = false; isBossBattle = false; isActionLocked = false; currentDungeon = null; currentMapData = null;
+            updateStats(); renderInventory(); renderSkillList(); updateAchievementsUI(); refreshQuestBoard(false);
+            forceSwitchView('view-quest');
+            
+            showMsg(`${name} 전사님의 데이터를 클라우드에서 성공적으로 불러왔습니다!`);
+        } catch (e) {
+            console.error(e);
+            showMsg("불러오기 중 오류가 발생했습니다. 네트워크 상태를 확인해주세요.");
+        }
     }
 
     function getWeaponAtk(itemData) {
