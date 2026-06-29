@@ -38,6 +38,9 @@
             <button class="pixel-btn text-[10px] px-3 py-2 bg-red-900 border-2 border-white flex items-center gap-1 shadow-lg" onclick="openAdminAuth()">
                 🛠️ 복구
             </button>
+            <button class="pixel-btn text-[10px] px-3 py-2 bg-purple-900 border-2 border-white flex items-center gap-1 shadow-lg font-bold" onclick="openArenaModal()">
+                ⚔️ 투기장
+            </button>
             <button class="pixel-btn text-[10px] px-3 py-2 bg-blue-800 border-2 border-white flex items-center gap-1 shadow-lg" onclick="document.getElementById('save-modal').classList.remove('hidden')">
                 💾 데이터
             </button>
@@ -129,6 +132,7 @@
                 </div>
             </div>
 
+            <!-- 전투 필드 (일반/보스/투기장 공용) -->
             <div id="battle-field" class="h-full flex flex-col hidden">
                 <div class="flex-1 pixel-border mb-2 relative flex flex-col items-center justify-center p-4 bg-[#111]" id="battle-scene-bg">
                     <h2 id="monster-name" class="text-xl text-[var(--hp-red)] mb-1 text-shadow">슬라임</h2>
@@ -146,7 +150,7 @@
                     <button class="pixel-btn py-2 text-sm bg-red-900" onclick="attack()">⚔️ 타격</button>
                     <button class="pixel-btn py-2 text-sm bg-purple-900" onclick="openBattleSkill()">✨ 진리(마법)<span class="text-[0.6rem] block">MP 소모</span></button>
                     <button class="pixel-btn py-2 text-sm bg-green-800" onclick="openBattleBag()">🎒 가방<span class="text-[0.6rem] block">포션 사용</span></button>
-                    <button class="pixel-btn py-2 text-sm bg-gray-600" onclick="requestFlee()">🏃 도망</button>
+                    <button class="pixel-btn py-2 text-sm bg-gray-600" onclick="requestFlee()">🏃 도망 / 항복</button>
                 </div>
             </div>
         </div>
@@ -253,6 +257,18 @@
     </div>
 
     <!-- Modals -->
+    <!-- Arena Modal -->
+    <div id="arena-modal" class="hidden fixed inset-0 bg-black/95 flex flex-col items-center justify-center z-[90] p-4">
+        <div class="pixel-border bg-[#1a1a1d] p-4 max-w-sm w-full shadow-[0_0_30px_rgba(255,50,50,0.4)] border-red-900 border-4 flex flex-col h-[75%]">
+            <h2 class="text-xl text-red-500 mb-2 font-bold text-center border-b border-red-900 pb-2">⚔️ 영광의 투기장</h2>
+            <p class="text-[10px] text-gray-400 leading-tight mb-2 text-center">서버의 다른 플레이어 데이터와 결투합니다.<br>(승리 시 레벨 비례 골드, 5% 확률 전설 무기)</p>
+            <div id="arena-opponents-list" class="flex-1 overflow-y-auto flex flex-col gap-2 mb-2 p-1">
+                <!-- opponents loaded here -->
+            </div>
+            <button class="pixel-btn py-2 bg-gray-700 w-full shrink-0" onclick="document.getElementById('arena-modal').classList.add('hidden')">나가기</button>
+        </div>
+    </div>
+
     <div id="save-modal" class="hidden fixed inset-0 bg-black/90 flex flex-col items-center justify-center z-[95] p-4">
         <div class="pixel-border bg-[#1a1a1d] p-6 max-w-sm w-full shadow-[0_0_20px_rgba(59,130,246,0.3)] flex flex-col gap-4 text-center">
             <h2 class="text-xl text-yellow-400 mb-2">💾 게임 데이터 관리</h2>
@@ -314,8 +330,8 @@
             <h3 class="text-red-500 text-lg mb-2">⚠️ 경고</h3>
             <p id="confirm-text" class="text-sm text-gray-300 mb-6">던전 탐험 중입니다.<br>도망치시겠습니까?<br><span class="text-red-400 text-xs">(얻은 경험치 상실, 획득한 골드 유지)</span></p>
             <div class="flex justify-center gap-4">
-                <button class="pixel-btn px-6 py-2 bg-red-800" onclick="executeFlee()">도망치기</button>
-                <button class="pixel-btn px-6 py-2 bg-gray-600" onclick="cancelSwitch()">계속 탐험</button>
+                <button class="pixel-btn px-6 py-2 bg-red-800" onclick="executeFlee()">도망/항복</button>
+                <button class="pixel-btn px-6 py-2 bg-gray-600" onclick="cancelSwitch()">계속 하기</button>
             </div>
         </div>
     </div>
@@ -390,7 +406,7 @@
         inventory: { equip: { weapon: null, armor: null }, bag: [], stash: [] }, 
         activeQuest: null,
         achievements: { '초보자의 숲': 0, '고블린 동굴': 0, '오크 부락': 0, '악마기사단': 0, '뒤틀린 슬라임 부족': 0, '다각형 다크 엘프': 0, '마왕성': 0 },
-        stats: { kills: 0, bossKills: 0, goldEarned: 500, enhanceTries: 0 },
+        stats: { kills: 0, bossKills: 0, goldEarned: 500, enhanceTries: 0, arenaWins: 0 },
         claimedMissions: []
     };
 
@@ -406,14 +422,20 @@
         'w4': { id: 'w4', name: '불확실성의 지팡이', type: 'weapon', atk: 25, def: 0, price: 2500, icon: '🪄', reqLevel: 8, special: { type: 'rng', variance: 0.8 }, desc: '피해량 편차 80%. 운에 맡기세요! (기본 공+25)' },
         'w5': { id: 'w5', name: '쌍검 [신루]', type: 'weapon', atk: 22, def: 0, price: 5000, icon: '⚔️', reqLevel: 12, special: { type: 'double', chance: 0.4 }, desc: '더블 어택: 40% 확률로 2회 연속 공격. (기본 공+22)' },
         
-        // 던전 파밍 무기
+        // 던전 파밍 무기 (일반)
         'd_w1': { id: 'd_w1', name: '고블린 뼈단검', type: 'weapon', atk: 15, def: 0, price: 600, icon: '🦴', isDrop: true, special: { type: 'bleed', chance: 0.4, dmg: 5, turns: 2 }, desc: '[파밍] 40% 확률로 출혈 유발. (기본 공+15)' },
         'd_w2': { id: 'd_w2', name: '오크의 파괴 망치', type: 'weapon', atk: 35, def: -5, price: 1500, icon: '🔨', isDrop: true, special: { type: 'rng', variance: 0.1 }, desc: '[파밍] 방어력 -5 감소, 안정적인 데미지. (기본 공+35)' },
         'd_w3': { id: 'd_w3', name: '마검 [바알제붑]', type: 'weapon', atk: 60, def: 0, price: 4000, icon: '🗡️', isDrop: true, special: { type: 'crit', chance: 0.4, mult: 2.0 }, desc: '[파밍/레어] 40% 확률로 2배 크리티컬. (기본 공+60)' },
         'd_w4': { id: 'd_w4', name: '기하학 큐브 코어', type: 'weapon', atk: 85, def: 0, price: 8000, icon: '🧊', isDrop: true, special: { type: 'paralyze', chance: 0.35 }, desc: '[파밍] 35% 확률로 적 마비. (기본 공+85)' },
         'd_w5': { id: 'd_w5', name: '암살자의 검', type: 'weapon', atk: 60, def: 0, price: 6000, icon: '🗡️', isDrop: true, special: { type: 'crit', chance: 0.5, mult: 2.5 }, desc: '[파밍] 50% 확률로 2.5배 크리티컬. (기본 공+60)' },
 
-        // 보스 전용 장비 및 드랍템
+        // 초희귀 파밍 무기 및 방어구 (신규 추가)
+        'd_w7': { id: 'd_w7', name: '요정의 나뭇가지', type: 'weapon', atk: 25, def: 0, price: 3000, icon: '🌿', isDrop: true, special: { type: 'vampire', amount: 5 }, desc: '[초희귀 파밍] 숲의 기운이 담긴 가지. 타격 시 체력을 5 회복. (기본 공+25)' },
+        'd_w8': { id: 'd_w8', name: '피의 흑검', type: 'weapon', atk: 55, def: 0, price: 7000, icon: '🗡️', isDrop: true, special: { type: 'vampire', amount: 15 }, desc: '[초희귀 파밍] 피를 갈망하는 검. 타격 시 체력을 15 회복. (기본 공+55)' },
+        'd_w6': { id: 'd_w6', name: '차원을 베는 검', type: 'weapon', atk: 120, def: 0, price: 20000, icon: '🌌', isDrop: true, special: { type: 'crit', chance: 0.3, mult: 3.0 }, desc: '[초희귀 파밍] 공간을 가르는 환상의 검. 30% 확률로 3배 크리티컬. (기본 공+120)' },
+        'd_a1': { id: 'd_a1', name: '고대의 미스릴 갑옷', type: 'armor', atk: 0, def: 60, price: 15000, icon: '✨', isDrop: true, special: { type: 'heal_on_clear', heal: 50 }, desc: '[초희귀 파밍] 가볍고 절대 부서지지 않는 갑옷. 방 클리어 시 체력 50 회복. (기본 방+60)' },
+
+        // 보스/투기장 전용 무기 및 드랍템
         'b_w1': { id: 'b_w1', name: '슬로우 소드', type: 'weapon', atk: 10, def: 0, price: 0, icon: '🗡️', isBossDrop: true, special: { type: 'paralyze', chance: 0.4 }, desc: '[초보자의 숲 보스] 40% 확률로 1턴 스턴(마비). (기본 공+10)' },
         'b_m1': { id: 'b_m1', name: '대왕 슬라임 조각', type: 'material', price: 150, icon: '🦠', desc: '대왕 슬라임의 신체 일부. 상점에 판매할 수 있다.' },
         'b_w2': { id: 'b_w2', name: '고블린 족장의 창', type: 'weapon', atk: 18, def: 0, price: 0, icon: '🔱', isBossDrop: true, special: { type: 'anti_goblin' }, desc: '[고블린 동굴 보스] 고블린 무조건 즉사. (기본 공+18)' },
@@ -426,6 +448,9 @@
         'b_p1': { id: 'b_p1', name: '뒤틀린 영약', type: 'consumable', healHp: 300, healMp: 0, price: 1500, icon: '🧪', isBossDrop: true, special: { type: 'buff_atk', amount: 20, turns: 5 }, desc: '[슬라임 킹 보스] 체력 300 회복 및 5턴간 공격력 +20 버프.' },
         'b_w5': { id: 'b_w5', name: '여왕의 그림자 활', type: 'weapon', atk: 70, def: 0, price: 0, icon: '🏹', isBossDrop: true, special: { type: 'triple', chance: 0.3 }, desc: '[다크 엘프 여왕 보스] 30% 확률로 3연속 맹공격(트리플 샷) 발사. (기본 공+70)' },
         'b_m5': { id: 'b_m5', name: '여왕의 흑요석', type: 'material', price: 1200, icon: '🌑', desc: '여왕이 지니고 있던 신비하고 어두운 마력석.' },
+        
+        // 투기장 전용 장비
+        'a_w1': { id: 'a_w1', name: '광전사의 검', type: 'weapon', atk: 80, def: 0, price: 0, icon: '🩸', isBossDrop: true, special: { type: 'vampire', amount: 20 }, desc: '[투기장 전리품] 피에 굶주린 검. 타격 시 체력을 20 회복합니다. (기본 공+80)' },
 
         // 방어구 (상점)
         'a1': { id: 'a1', name: '가죽 옷', type: 'armor', atk: 0, def: 3, price: 120, icon: '🦺', reqLevel: 1, desc: '허름한 가죽 옷. (기본 방+3)' },
@@ -456,7 +481,13 @@
         { id: 's3', name: "피타고라스 일격", type: "마법(액티브)", color: "text-red-400", desc: "MP 40 소비. 적의 방어를 무시하는 초강력 마법 피해(공격력x3).", cost: 5000, icon: "📐", reqLevel: 10, effect: () => {} },
         { id: 's4', name: "방정식의 폭주", type: "마법(액티브)", color: "text-purple-400", desc: "MP 30 소비. 마력이 깃든 3연속 마법 타격.", cost: 8000, icon: "🔢", reqLevel: 12, effect: () => {} },
         { id: 's5', name: "절대값 쉴드", type: "마법(액티브)", color: "text-green-400", desc: "MP 25 소비. 즉시 체력 100 회복 & 3턴간 방어력 +30.", cost: 12000, icon: "🔰", reqLevel: 15, effect: () => {} },
-        { id: 's6', name: "운석의 기하학", type: "마법(액티브)", color: "text-red-500", desc: "MP 80 소비. 거대한 메테오를 소환! 방어 무시 파멸적 피해(공격력x5).", cost: 30000, icon: "☄️", reqLevel: 18, effect: () => {} }
+        { id: 's6', name: "운석의 기하학", type: "마법(액티브)", color: "text-red-500", desc: "MP 80 소비. 거대한 메테오를 소환! 방어 무시 파멸적 피해(공격력x5).", cost: 30000, icon: "☄️", reqLevel: 18, effect: () => {} },
+        
+        // 신규 진리(스킬) 4종 추가 (후반부)
+        { id: 's7', name: "논리적 인내", type: "패시브", color: "text-blue-500", desc: "영구적으로 체력 최대치가 200 증가합니다.", cost: 20000, icon: "❤️", reqLevel: 20, effect: () => { player.maxHp += 200; player.hp += 200; } },
+        { id: 's8', name: "오일러의 절대 방패", type: "마법(액티브)", color: "text-green-500", desc: "MP 40 소비. 5턴간 방어력이 무려 +100 증가합니다.", cost: 40000, icon: "🛡️", reqLevel: 23, effect: () => {} },
+        { id: 's9', name: "무한 수열의 검", type: "마법(액티브)", color: "text-purple-500", desc: "MP 60 소비. 끝없이 이어지는 5연속 마법 타격!", cost: 60000, icon: "♾️", reqLevel: 25, effect: () => {} },
+        { id: 's10', name: "미적분학의 정수", type: "마법(액티브)", color: "text-yellow-500", desc: "MP 100 소비. 체력을 50% 회복하며 적에게 방어 무시 괴멸적 피해(공격력x6).", cost: 100000, icon: "🌀", reqLevel: 28, effect: () => {} }
     ];
 
     const monsters = [
@@ -535,13 +566,22 @@
         { id: 29, title: "장인 정신", desc: "장비 강화 30회 시도", type: "enhance", target: 30, rewardType: "item", rewardItem: "exp_scroll", rewardCount: 3 },
         
         { id: 30, title: "학구열 I", desc: "진리(스킬) 1개 습득", type: "skills", target: 1, rewardType: "gold", rewardAmount: 600 },
-        { id: 31, title: "학구열 II", desc: "진리(스킬) 3개 습득", type: "skills", target: 3, rewardType: "item", rewardItem: "exp_scroll", rewardCount: 2 }
+        { id: 31, title: "학구열 II", desc: "진리(스킬) 3개 습득", type: "skills", target: 3, rewardType: "item", rewardItem: "exp_scroll", rewardCount: 2 },
+
+        // 투기장 도전과제 추가
+        { id: 32, title: "투기장 입문", desc: "투기장에서 1회 승리", type: "arenaWins", target: 1, rewardType: "gold", rewardAmount: 2000 },
+        { id: 33, title: "검투사", desc: "투기장에서 10회 승리", type: "arenaWins", target: 10, rewardType: "item", rewardItem: "silver_coin", rewardCount: 2 },
+        { id: 34, title: "투기장의 지배자", desc: "투기장에서 30회 승리", type: "arenaWins", target: 30, rewardType: "item", rewardItem: "silver_coin", rewardCount: 5 }
     ];
 
     let currentMonster = null, isBattling = false, currentDungeon = null, currentMapData = null, currentNodeId = null, clearedNodes = [], isBossBattle = false;
     let dungeonGainedExp = 0, dungeonGainedGold = 0, pendingTargetView = null, quizCallback = null, selectedSkill = null;
     let playerBattleStatus = { atkBuff: 0, atkBuffTurns: 0, defBuff: 0, defBuffTurns: 0 }; 
     let enhanceTarget = null; let enhanceMaterial = null; let enhanceUnlocked = false;
+
+    // 투기장 관련 변수
+    let isArenaBattle = false;
+    let loadedOpponents = [];
 
     const nodeIcons = { 'start': '🚩', 'monster': '🦇', 'boss': '👹', 'treasure': '🎁', 'shrine': '⛲', 'empty': '🏕️' };
     const els = {
@@ -651,7 +691,7 @@
                     inventory: { equip: { weapon: null, armor: null }, bag: [], stash: [] }, 
                     activeQuest: null,
                     achievements: { '초보자의 숲': 0, '고블린 동굴': 0, '오크 부락': 0, '악마기사단': 0, '뒤틀린 슬라임 부족': 0, '다각형 다크 엘프': 0, '마왕성': 0 },
-                    stats: { kills: 0, bossKills: 0, goldEarned: gold, enhanceTries: 0 },
+                    stats: { kills: 0, bossKills: 0, goldEarned: gold, enhanceTries: 0, arenaWins: 0 },
                     claimedMissions: []
                 };
             }
@@ -718,7 +758,7 @@
             
             player = JSON.parse(docSnap.data().data);
             
-            isBattling = false; isBossBattle = false; isActionLocked = false; currentDungeon = null; currentMapData = null;
+            isBattling = false; isBossBattle = false; isArenaBattle = false; isActionLocked = false; currentDungeon = null; currentMapData = null;
             updateStats(); renderInventory(); renderSkillList(); updateAchievementsUI(); refreshQuestBoard(false);
             forceSwitchView('view-quest');
             
@@ -727,6 +767,125 @@
             console.error(e);
             showMsg("불러오기 중 오류가 발생했습니다. 네트워크 상태를 확인해주세요.");
         }
+    }
+
+    // 투기장 로직
+    function openArenaModal() {
+        if (player.level < 20) return showMsg("투기장은 레벨 20부터 입장할 수 있습니다.");
+        document.getElementById('arena-modal').classList.remove('hidden');
+        loadArenaOpponents();
+    }
+
+    async function loadArenaOpponents() {
+        const listDiv = document.getElementById('arena-opponents-list');
+        listDiv.innerHTML = '<div class="text-center text-gray-400 py-6 animate-pulse">서버에서 상대를 찾는 중...</div>';
+        
+        if (!db || !firestoreLib || !currentUser) {
+            listDiv.innerHTML = '<div class="text-center text-red-400 py-6">클라우드 서버에 연결되어 있지 않습니다. 잠시 후 다시 시도하세요.</div>';
+            return;
+        }
+        
+        try {
+            const { collection, getDocs } = firestoreLib;
+            const q = collection(db, 'artifacts', appId, 'public', 'data', 'saves');
+            const snap = await getDocs(q);
+            let opponents = [];
+            
+            snap.forEach(doc => {
+                try {
+                    let data = JSON.parse(doc.data().data);
+                    // 어느 정도 진행된 유저만 불러오기 (레벨 15 이상 등, 여기서는 테스트를 위해 1렙이상)
+                    if (data.level >= 1) { 
+                        opponents.push({ name: doc.id, ...data });
+                    }
+                } catch(e) {}
+            });
+            
+            let currentSaveName = document.getElementById('save-name') ? document.getElementById('save-name').value.trim() : '';
+            // 본인 제외
+            opponents = opponents.filter(o => o.name !== currentSaveName);
+            // 섞어서 5명만 표시
+            opponents.sort(() => Math.random() - 0.5);
+            loadedOpponents = opponents.slice(0, 5);
+            
+            listDiv.innerHTML = '';
+            if (loadedOpponents.length === 0) {
+                listDiv.innerHTML = '<div class="text-center text-gray-400 py-6">현재 도전할 상대가 없습니다.<br>(다른 유저가 데이터를 저장해야 나타납니다)</div>';
+                return;
+            }
+            
+            loadedOpponents.forEach((opp, idx) => {
+                const div = document.createElement('div');
+                div.className = "pixel-border p-3 bg-[#222] flex justify-between items-center";
+                
+                div.innerHTML = `
+                    <div class="flex-1 text-left px-2 flex items-center gap-3">
+                        <div class="text-3xl">🤺</div>
+                        <div>
+                            <div class="text-yellow-400 font-bold mb-1">[Lv.${opp.level}] ${opp.name}</div>
+                            <div class="text-[10px] text-gray-400">HP: ${opp.maxHp} | ⚔️ 투기장 전사</div>
+                        </div>
+                    </div>
+                    <button class="pixel-btn py-2 px-4 bg-red-900 font-bold text-sm shrink-0 shadow-lg hover:scale-105" onclick="startArenaBattle(${idx})">결투</button>
+                `;
+                listDiv.appendChild(div);
+            });
+        } catch(e) {
+            console.error(e);
+            listDiv.innerHTML = '<div class="text-center text-red-400 py-6">상대 목록을 불러오는 중 오류가 발생했습니다.</div>';
+        }
+    }
+
+    function startArenaBattle(idx) {
+        document.getElementById('arena-modal').classList.add('hidden');
+        const oppData = loadedOpponents[idx];
+        
+        let oppAtk = oppData.baseAtk;
+        if (oppData.inventory && oppData.inventory.equip && oppData.inventory.equip.weapon) {
+             let wId = oppData.inventory.equip.weapon.id;
+             let wEn = oppData.inventory.equip.weapon.enhance || 0;
+             if(itemDB[wId]) oppAtk += (itemDB[wId].atk || 0) + (enhanceAtkBonus[wEn] || 0);
+        }
+        let oppDef = oppData.baseDef;
+        if (oppData.inventory && oppData.inventory.equip && oppData.inventory.equip.armor) {
+             let aId = oppData.inventory.equip.armor.id;
+             let aEn = oppData.inventory.equip.armor.enhance || 0;
+             if(itemDB[aId]) oppDef += (itemDB[aId].def || 0) + (enhanceDefBonus[aEn] || 0);
+        }
+        
+        currentMonster = {
+            name: oppData.name + " (유저)",
+            level: oppData.level,
+            maxHp: oppData.maxHp,
+            hp: oppData.maxHp,
+            atk: oppAtk,
+            def: oppDef,
+            sprite: '🤺',
+            isArenaBot: true,
+            status: { bleed: 0, bleedDmg: 0, paralyze: false, isPoison: false },
+            turnCount: 0
+        };
+        
+        isBattling = true;
+        isArenaBattle = true;
+        isBossBattle = false;
+        isActionLocked = false;
+        
+        forceSwitchView('view-battle');
+        document.getElementById('dungeon-select').classList.add('hidden');
+        document.getElementById('battle-field').classList.remove('hidden');
+        
+        // 투기장 배경
+        const bg = document.getElementById('battle-scene-bg');
+        bg.style.background = 'linear-gradient(135deg, #3a2a00 0%, #1a0a00 100%)'; 
+        
+        els.log.innerHTML = '<div class="text-yellow-400 text-lg font-bold py-1">투기장 결투 시작!</div>';
+        els.mSprite.classList.add('scale-125');
+        els.mSprite.classList.remove('text-red-500');
+        els.mName.innerText = currentMonster.name;
+        els.mSprite.innerText = currentMonster.sprite;
+        updateMonsterHp();
+        logMessage(`상대: <span class="text-red-400 font-bold">${currentMonster.name}</span>`);
     }
 
     function getWeaponAtk(itemData) {
@@ -751,6 +910,7 @@
     
     function updateStats() {
         if (player.level < 1) player.level = 1;
+        if (player.stats.arenaWins === undefined) player.stats.arenaWins = 0;
         player.exp = Math.max(0, player.exp);
         els.level.innerText = player.level; els.atk.innerText = getTotalAtk(); els.def.innerText = getTotalDef();
         els.hp.innerText = Math.max(0, Math.floor(player.hp)); els.mp.innerText = Math.max(0, Math.floor(player.mp));
@@ -786,7 +946,9 @@
             else if (ach.type === 'gold') currentVal = player.stats.goldEarned;
             else if (ach.type === 'enhance') currentVal = player.stats.enhanceTries;
             else if (ach.type === 'skills') currentVal = player.skills.length;
+            else if (ach.type === 'arenaWins') currentVal = player.stats.arenaWins || 0;
             else if (ach.type === 'dungeon_clear') currentVal = player.achievements[ach.targetStr] || 0;
+            
             if (currentVal >= ach.target) { hasClaimable = true; break; }
         }
         if(hasClaimable) noti.classList.remove('hidden'); else noti.classList.add('hidden');
@@ -804,6 +966,7 @@
             else if (ach.type === 'gold') currentVal = player.stats.goldEarned;
             else if (ach.type === 'enhance') currentVal = player.stats.enhanceTries;
             else if (ach.type === 'skills') currentVal = player.skills.length;
+            else if (ach.type === 'arenaWins') currentVal = player.stats.arenaWins || 0;
             else if (ach.type === 'dungeon_clear') currentVal = player.achievements[ach.targetStr] || 0;
 
             const isCompleted = currentVal >= ach.target; const isClaimed = player.claimedMissions.includes(ach.id);
@@ -980,9 +1143,23 @@
             document.getElementById('confirm-modal').classList.add('hidden'); updateStats();
         } catch (e) { console.error(e); }
     }
-    function executeFlee() { exitDungeon(true); if(pendingTargetView) { forceSwitchView(pendingTargetView); pendingTargetView = null; } }
+    
+    function executeFlee() { 
+        if (isArenaBattle) {
+            die(); // 투기장에서의 도망은 곧 패배
+            pendingTargetView = null;
+            document.getElementById('confirm-modal').classList.add('hidden');
+            return;
+        }
+        exitDungeon(true); 
+        if(pendingTargetView) { forceSwitchView(pendingTargetView); pendingTargetView = null; } 
+    }
     function cancelSwitch() { document.getElementById('confirm-modal').classList.add('hidden'); pendingTargetView = null; }
-    function requestFlee() { document.getElementById('confirm-modal').classList.remove('hidden'); }
+    
+    function requestFlee() { 
+        document.getElementById('confirm-text').innerHTML = isArenaBattle ? "결투를 포기하시겠습니까?<br>패배로 기록되며 체력이 1이 됩니다." : "던전 탐험 중입니다.<br>도망치시겠습니까?<br><span class='text-red-400 text-xs'>(얻은 경험치 상실, 획득한 골드 유지)</span>";
+        document.getElementById('confirm-modal').classList.remove('hidden'); 
+    }
 
     function attemptEnterNode(node) {
         isBossBattle = false;
@@ -1104,6 +1281,14 @@
 
             currentMonster.hp -= dmg; logMessage(`공격! ${currentMonster.name}에게 ${dmg} 피해.`);
 
+            // 뱀파이어 옵션 처리 (광전사의 검, 피의 흑검 등)
+            if(special && special.type === 'vampire') {
+                let heal = special.amount;
+                player.hp = Math.min(player.maxHp, player.hp + heal);
+                logMessage(`🩸 무기의 힘! 체력 <span class="text-green-400">${heal}</span> 회복!`, 'text-red-400 font-bold');
+                updateStats();
+            }
+
             if(special && special.type === 'bleed' && Math.random() < special.chance) { currentMonster.status.bleed = special.turns; currentMonster.status.bleedDmg = special.dmg; currentMonster.status.isPoison = false; logMessage(`🩸 ${currentMonster.name}에게 출혈을 일으켰습니다!`, 'text-red-500'); }
             if(special && special.type === 'poison' && Math.random() < special.chance) { currentMonster.status.bleed = special.turns; currentMonster.status.bleedDmg = special.dmg; currentMonster.status.isPoison = true; logMessage(`☠️ ${currentMonster.name}을(를) 치명적인 맹독에 중독시켰습니다!`, 'text-purple-500'); }
             if(special && special.type === 'paralyze' && Math.random() < special.chance) { currentMonster.status.paralyze = true; logMessage(`⚡ ${currentMonster.name}가 마비되었습니다!`, 'text-purple-400'); }
@@ -1135,6 +1320,10 @@
         else if(skillId === 's4' && player.mp >= 30) { mpCost = 30; logMessage(`🔢 [방정식의 폭주] 마력 연타 시작!`, 'text-purple-400'); for(let i=0; i<3; i++) { if(currentMonster.hp <= 0) break; let dmg = Math.max(1, Math.floor(getTotalAtk() * 1.5) - currentMonster.def); currentMonster.hp -= dmg; logMessage(` ➡️ ${i+1}연타: ${dmg} 피해!`); } castSuccess = true; } 
         else if(skillId === 's5' && player.mp >= 25) { mpCost = 25; player.hp = Math.min(player.maxHp, player.hp + 100); playerBattleStatus.defBuff = 30; playerBattleStatus.defBuffTurns = 3; logMessage(`🔰 [절대값 쉴드] 체력 100 회복 & 3턴간 방어력 +30!`, 'text-green-400 font-bold'); castSuccess = true; } 
         else if(skillId === 's6' && player.mp >= 80) { mpCost = 80; let dmg = Math.floor(getTotalAtk() * 5.0); currentMonster.hp -= dmg; logMessage(`☄️ [운석의 기하학] 하늘에서 거대한 메테오가 떨어집니다! 방어를 무시하고 <span class="text-red-500 font-bold text-xl">${dmg}</span> 피해!`); castSuccess = true; }
+        // 신규 진리 마법
+        else if(skillId === 's8' && player.mp >= 40) { mpCost = 40; playerBattleStatus.defBuff = 100; playerBattleStatus.defBuffTurns = 5; logMessage(`🛡️ [오일러의 절대 방패] 5턴간 방어력 +100! 절대적인 방어막을 전개합니다.`, 'text-green-400 font-bold'); castSuccess = true; } 
+        else if(skillId === 's9' && player.mp >= 60) { mpCost = 60; logMessage(`♾️ [무한 수열의 검] 무수한 참격이 쏟아집니다!`, 'text-purple-400'); for(let i=0; i<5; i++) { if(currentMonster.hp <= 0) break; let dmg = Math.max(1, Math.floor(getTotalAtk() * 1.2) - currentMonster.def); currentMonster.hp -= dmg; logMessage(` ➡️ ${i+1}격: ${dmg} 피해!`); } castSuccess = true; } 
+        else if(skillId === 's10' && player.mp >= 100) { mpCost = 100; let healAmount = Math.floor(player.maxHp * 0.5); player.hp = Math.min(player.maxHp, player.hp + healAmount); let dmg = Math.floor(getTotalAtk() * 6.0); currentMonster.hp -= dmg; logMessage(`🌀 [미적분학의 정수] 체력 ${healAmount} 회복! 적에게 방어 무시 <span class="text-yellow-400 font-bold text-xl">${dmg}</span> 피해!`); castSuccess = true; }
 
         if(!castSuccess) { isActionLocked = false; return showMsg("MP가 부족하거나 스킬을 시전할 수 없습니다."); }
         player.mp -= mpCost; updateStats(); updateMonsterHp(); els.mSprite.style.transform = 'scale(1.2) rotate(10deg) brightness(2)'; setTimeout(() => els.mSprite.style.transform = '', 150);
@@ -1157,6 +1346,24 @@
 
         if(currentMonster.status && currentMonster.status.paralyze) { logMessage(`⚡ ${currentMonster.name}은(는) 마비되어 움직일 수 없습니다!`, 'text-purple-400'); currentMonster.status.paralyze = false; updateMonsterHp(); isActionLocked = false; return; }
 
+        // 투기장 봇 AI
+        if(currentMonster.isArenaBot) {
+            let dmg = 0;
+            let isSkill = Math.random() < 0.3; // 30% 확률로 강공격 (스킬)
+            if (isSkill) {
+                dmg = Math.max(1, Math.floor(currentMonster.atk * 1.5) - getTotalDef());
+                logMessage(`💥 ${currentMonster.name}의 <span class="text-purple-400">강력한 일격!</span> ${dmg} 피해!`, 'text-red-400');
+            } else {
+                dmg = Math.max(1, currentMonster.atk - getTotalDef());
+                logMessage(`⚔️ ${currentMonster.name}의 공격! ${dmg} 피해.`, 'text-gray-300');
+            }
+            player.hp -= dmg;
+            updateStats();
+            document.body.style.backgroundColor = '#420000'; setTimeout(() => document.body.style.backgroundColor = '#1a1a1a', 100);
+            if (player.hp <= 0) die(); else isActionLocked = false;
+            return;
+        }
+
         if(currentMonster.name === "수학의 대마왕") {
             if(currentMonster.turnCount % 4 === 3) { currentMonster.hp = Math.min(currentMonster.maxHp, currentMonster.hp + 300); updateMonsterHp(); logMessage(`👿 대마왕이 [암흑 연산]으로 체력을 300 회복합니다!`, 'text-purple-400 font-bold'); isActionLocked = false; return; }
             if(currentMonster.turnCount % 4 === 0) {
@@ -1171,6 +1378,38 @@
     }
 
     function winBattle() {
+        if (isArenaBattle) {
+            isBattling = false;
+            isActionLocked = false;
+            isArenaBattle = false;
+            
+            player.stats.arenaWins = (player.stats.arenaWins || 0) + 1;
+            
+            // 보상: 상대 레벨 * 150 골드
+            const goldReward = currentMonster.level * 150;
+            addGold(goldReward);
+            logMessage(`🏆 투기장 결투 승리! <span class="text-yellow-400">${goldReward} 골드</span> 획득!`, 'text-yellow-400 font-bold');
+            
+            // 5% 확률 광전사의 검 드랍
+            if (Math.random() < 0.05) {
+                if(addItemToInventory('bag', 'a_w1')) {
+                    logMessage(`🎁 엄청난 행운! 투기장 전리품 <span class="text-red-500 font-bold">[광전사의 검]</span>을 획득했습니다!`, 'text-yellow-300');
+                }
+            }
+            
+            updateStats();
+            updateAchievementsUI(); // 업적 업데이트 등
+            
+            els.mSprite.style.opacity = '0.2';
+            setTimeout(() => {
+                els.mSprite.style.opacity = '1';
+                document.getElementById('battle-field').classList.add('hidden');
+                document.getElementById('dungeon-select').classList.remove('hidden');
+                forceSwitchView('view-quest');
+            }, 1800);
+            return;
+        }
+
         isBattling = false; isActionLocked = false; const exp = currentMonster.exp; const gold = currentMonster.gold; player.exp += exp; addGold(gold); dungeonGainedGold += gold; dungeonGainedExp += exp; player.stats.kills++; 
         logMessage(`🏆 승리! 경험치 ${exp}, 골드 ${gold} 획득!`, 'text-yellow-400'); updateQuestProgress('kill', currentMonster.name);
 
@@ -1200,7 +1439,21 @@
             if (Math.random() < eStoneChance) {
                 if(addItemToInventory('bag', 'e_stone', 1)) logMessage(`💎 [강화의 돌] 획득!`, 'text-blue-300 font-bold');
             }
-        } else if(currentMonster.drop && Math.random() < 0.5) { addItemToInventory('bag', currentMonster.drop); logMessage(`전리품: [${itemDB[currentMonster.drop].name}]`, 'text-green-300'); }
+        } else {
+            // 일반 아이템 드랍
+            if(currentMonster.drop && Math.random() < 0.5) { addItemToInventory('bag', currentMonster.drop); logMessage(`전리품: [${itemDB[currentMonster.drop].name}]`, 'text-green-300'); }
+            
+            // 신규 초희귀 파밍 장비 드랍 시스템 (확률 1~2%)
+            const rollRare = Math.random();
+            if (currentDungeon === '초보자의 숲' || currentDungeon === '고블린 동굴') {
+                if (rollRare < 0.01) { if(addItemToInventory('bag', 'd_w7')) logMessage(`✨ 기적! 초희귀 전리품 [${itemDB['d_w7'].name}] 획득!`, 'text-purple-400 font-bold'); }
+            } else if (currentDungeon === '오크 부락' || currentDungeon === '악마기사단') {
+                if (rollRare < 0.02) { if(addItemToInventory('bag', 'd_w8')) logMessage(`✨ 기적! 초희귀 전리품 [${itemDB['d_w8'].name}] 획득!`, 'text-purple-400 font-bold'); }
+            } else if (currentDungeon === '뒤틀린 슬라임 부족' || currentDungeon === '다각형 다크 엘프' || currentDungeon === '마왕성') {
+                if (rollRare < 0.01) { if(addItemToInventory('bag', 'd_w6')) logMessage(`✨ 기적! 초희귀 전리품 [${itemDB['d_w6'].name}] 획득!`, 'text-purple-400 font-bold'); }
+                else if (rollRare < 0.02) { if(addItemToInventory('bag', 'd_a1')) logMessage(`✨ 기적! 초희귀 전리품 [${itemDB['d_a1'].name}] 획득!`, 'text-purple-400 font-bold'); }
+            }
+        }
         
         els.mSprite.style.opacity = '0.2'; checkLevelUp(); updateStats(); setTimeout(() => { els.mSprite.style.opacity = '1'; completeNode(); }, 1200);
     }
@@ -1216,6 +1469,19 @@
 
     function die() {
         try {
+            if (isArenaBattle) {
+                isBattling = false;
+                isArenaBattle = false;
+                isActionLocked = false;
+                showMsg("💀 결투에서 패배했습니다... 체력이 1이 됩니다.");
+                player.hp = 1;
+                updateStats();
+                document.getElementById('battle-field').classList.add('hidden');
+                document.getElementById('dungeon-select').classList.remove('hidden');
+                forceSwitchView('view-quest');
+                return;
+            }
+
             isBattling = false; currentDungeon = null; isActionLocked = false; showMsg("💀 눈 앞이 깜깜해졌다... 마을로 귀환합니다.");
             player.hp = player.maxHp * 0.1; player.exp = Math.max(0, player.exp - (player.maxExp * 0.1)); updateStats();
             document.getElementById('battle-field').classList.add('hidden'); document.getElementById('dungeon-map-view').classList.add('hidden');
@@ -1245,7 +1511,7 @@
     function acceptQuest(id) { const q = questDB.find(q => q.id === id); player.activeQuest = { ...q, currentCount: 0 }; window.offeredQuest = null; showMsg(`[${q.title}] 의뢰 수락!`); refreshQuestBoard(); }
     function completeQuest() { const q = player.activeQuest; addGold(q.gold); player.exp += q.exp; showMsg(`퀘스트 완료!\n${q.gold} 골드, ${q.exp} 경험치`); player.activeQuest = null; checkLevelUp(); updateStats(); refreshQuestBoard(true); }
     function cancelQuest() { player.activeQuest = null; showMsg("의뢰를 포기했습니다."); refreshQuestBoard(true); }
-    function updateQuestProgress(type, target) { if (!player.activeQuest) return; const q = player.activeQuest; if (q.type === type && q.target === target && q.currentCount < q.count) { q.currentCount++; if (q.currentCount >= q.count) showMsg(`[퀘스트 완료] ${q.title}\n마을로 돌아가 보상을 받으세요!`); refreshQuestBoard(); } }
+    function updateQuestProgress(type, target) { if (!player.activeQuest) return; const q = player.activeQuest; if (q.type === type && q.target === target && q.currentCount < q.count) { q.currentCount++; if (q.currentCount >= q.count) showMsg(`[퀘스트 완료] ${q.title}\n마 마을로 돌아가 보상을 받으세요!`); refreshQuestBoard(); } }
 
     function restInTown() { if(player.hp >= player.maxHp && player.mp >= player.maxMp) return showMsg("이미 체력과 마나가 가득 차 있습니다."); if(player.gold >= 50) { player.gold -= 50; player.hp = player.maxHp; player.mp = player.maxMp; updateStats(); showMsg("여관에서 푹 쉬었습니다!"); } else { showMsg("골드가 부족합니다."); } }
 
@@ -1339,7 +1605,7 @@
         const list = document.getElementById('shop-list'); list.innerHTML = '';
 
         if(mode === 'buy') {
-            Object.values(itemDB).filter(i => (i.type !== 'material' || i.id === 'k1' || i.id === 'e_stone') && (!i.isDrop || i.isBossDrop) && !i.isRealCurrency).forEach(item => {
+            Object.values(itemDB).filter(i => (i.type !== 'material' || i.id === 'k1' || i.id === 'e_stone') && (!i.isDrop || i.isBossDrop) && !i.isRealCurrency && i.id !== 'a_w1').forEach(item => {
                 const reqLvl = item.reqLevel || 1; const canBuy = player.level >= reqLvl;
                 const div = document.createElement('div'); div.className = "pixel-border p-2 bg-[#222] flex justify-between items-center";
                 let btnHtml = ''; if(item.isBossDrop) btnHtml = `<button class="pixel-btn text-xs py-1 px-2 bg-purple-900 shrink-0 ml-2 w-16" disabled>드랍</button>`; else if (canBuy) btnHtml = `<button class="pixel-btn text-xs py-1 px-2 bg-yellow-700 shrink-0 ml-2 w-16" onclick="buyItem('${item.id}')">${item.price.toLocaleString()}🪙</button>`; else btnHtml = `<button class="pixel-btn text-xs py-1 px-2 bg-gray-600 shrink-0 ml-2 w-16" disabled>잠김</button>`;
@@ -1457,7 +1723,7 @@
                     player.inventory[enhanceMaterial.loc].splice(mIdx, 1);
                 }
             }
-        };
+        }
         
         const roll = Math.random();
         
