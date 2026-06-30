@@ -411,6 +411,15 @@
         appId: "1:618643401567:web:fcabd1e5310815869de4ea"
     };
 
+    // 무한 대기를 방지하는 5초 타임아웃 시스템 추가
+    const dbTimeout = 5000;
+    const fetchWithTimeout = (promise) => {
+        return Promise.race([
+            promise,
+            new Promise((_, reject) => setTimeout(() => reject(new Error("TIMEOUT")), dbTimeout))
+        ]);
+    };
+
     let player = {
         level: 1, exp: 0, maxExp: 100, hp: 100, maxHp: 100, mp: 50, maxMp: 50,
         baseAtk: 15, baseDef: 5, gold: 500, skills: [],
@@ -621,15 +630,14 @@
             db = firestore.getFirestore(app);
             firestoreLib = firestore;
 
-            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                try {
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
                     await firebaseAuth.signInWithCustomToken(auth, __initial_auth_token);
-                } catch (err) {
-                    console.warn("토큰 불일치 오류 발생, 익명 로그인으로 우회합니다.", err);
+                } else {
                     await firebaseAuth.signInAnonymously(auth);
                 }
-            } else {
-                await firebaseAuth.signInAnonymously(auth);
+            } catch (err) {
+                console.warn("Auth 인증 실패. 규칙(Rules)이 true라면 무시해도 됩니다.", err);
             }
 
             firebaseAuth.onAuthStateChanged(auth, (user) => {
@@ -676,7 +684,7 @@
         showMsg("클라우드 데이터를 복구/조정 중입니다...");
 
         try {
-            const docSnap = await getDoc(saveRef);
+            const docSnap = await fetchWithTimeout(getDoc(saveRef));
             let targetPlayer;
 
             if (docSnap.exists()) {
@@ -708,11 +716,12 @@
             }
 
             // 클라우드에 강제 덮어쓰기
-            await setDoc(saveRef, { pw: pw, data: JSON.stringify(targetPlayer) });
+            await fetchWithTimeout(setDoc(saveRef, { pw: pw, data: JSON.stringify(targetPlayer) }));
             showMsg(`[${name}] 계정의 긴급 복구가 완료되었습니다!\n이제 설정한 비밀번호로 로그인할 수 있습니다.`);
         } catch (e) {
             console.error(e);
-            showMsg("긴급 복구 중 오류가 발생했습니다. 권한이나 네트워크를 확인하세요.");
+            if (e.message === "TIMEOUT") showMsg("서버 응답 시간 초과!\n1. Firestore 데이터베이스 생성 여부\n2. 규칙(Rules) 허용 여부\n3. file:// 환경 실행 여부를 확인하세요.");
+            else showMsg("긴급 복구 중 오류가 발생했습니다. 권한이나 네트워크를 확인하세요.");
         }
     }
 
@@ -730,7 +739,7 @@
         showMsg("클라우드에 데이터를 저장하는 중입니다...");
 
         try {
-            const docSnap = await getDoc(saveRef);
+            const docSnap = await fetchWithTimeout(getDoc(saveRef));
             if (docSnap.exists() && docSnap.data().pw !== pw) {
                 return showMsg("비밀번호가 일치하지 않습니다.");
             }
@@ -741,11 +750,12 @@
                 }
             }
             
-            await setDoc(saveRef, { pw: pw, data: JSON.stringify(player) });
+            await fetchWithTimeout(setDoc(saveRef, { pw: pw, data: JSON.stringify(player) }));
             showMsg("성공적으로 클라우드에 게임 데이터가 저장되었습니다!\n(기기를 변경해도 이어서 플레이할 수 있습니다.)");
         } catch (e) {
             console.error(e);
-            showMsg("클라우드 저장 중 오류가 발생했습니다. 권한이 없거나 네트워크 문제입니다.");
+            if (e.message === "TIMEOUT") showMsg("서버 응답 시간 초과!\n1. Firestore 데이터베이스 생성 여부\n2. 규칙(Rules) 허용 여부\n3. file:// 환경 실행 여부를 확인하세요.");
+            else showMsg("클라우드 저장 중 오류가 발생했습니다. 권한이 없거나 네트워크 문제입니다.");
         }
     }
 
@@ -763,7 +773,7 @@
         showMsg("클라우드에서 데이터를 불러오는 중입니다...");
 
         try {
-            const docSnap = await getDoc(saveRef);
+            const docSnap = await fetchWithTimeout(getDoc(saveRef));
             if (!docSnap.exists()) return showMsg("해당 이름의 저장 데이터가 없습니다.");
             if (docSnap.data().pw !== pw) return showMsg("비밀번호가 일치하지 않습니다.");
             
@@ -776,7 +786,8 @@
             showMsg(`${name} 전사님의 데이터를 클라우드에서 성공적으로 불러왔습니다!`);
         } catch (e) {
             console.error(e);
-            showMsg("불러오기 중 오류가 발생했습니다. 네트워크 상태를 확인해주세요.");
+            if (e.message === "TIMEOUT") showMsg("서버 응답 시간 초과!\n1. Firestore 데이터베이스 생성 여부\n2. 규칙(Rules) 허용 여부\n3. file:// 환경 실행 여부를 확인하세요.");
+            else showMsg("불러오기 중 오류가 발생했습니다. 네트워크 상태를 확인해주세요.");
         }
     }
 
@@ -799,7 +810,7 @@
         try {
             const { collection, getDocs } = firestoreLib;
             const q = collection(db, 'artifacts', appId, 'public', 'data', 'saves');
-            const snap = await getDocs(q);
+            const snap = await fetchWithTimeout(getDocs(q));
             let opponents = [];
             
             snap.forEach(doc => {
@@ -843,7 +854,11 @@
             });
         } catch(e) {
             console.error(e);
-            listDiv.innerHTML = '<div class="text-center text-red-400 py-6">상대 목록을 불러오는 중 오류가 발생했습니다.</div>';
+            if (e.message === "TIMEOUT") {
+                listDiv.innerHTML = '<div class="text-center text-red-400 py-6 text-xs">서버 응답 초과.<br>Firestore DB 생성 및 규칙(Rules)을 확인해주세요.<br>(file:// 환경에서는 작동하지 않을 수 있습니다.)</div>';
+            } else {
+                listDiv.innerHTML = '<div class="text-center text-red-400 py-6">상대 목록을 불러오는 중 오류가 발생했습니다.</div>';
+            }
         }
     }
 
