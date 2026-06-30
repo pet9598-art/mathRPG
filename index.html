@@ -400,15 +400,14 @@
 </div>
 
 <script>
-    // ⚠️ [중요] 개인 서버나 페이지에 배포할 경우 본인의 Firebase 설정을 여기에 입력하세요.
-    // Firebase Console -> 프로젝트 설정 -> 웹 앱 추가 후 나오는 config 값
-    const MY_FIREBASE_CONFIG = {
-        apiKey: "AIzaSyCacxSyxofZEZk51sFakd-MtAh1THBwiVI",
-        authDomain: "mathrpg-670c3.firebaseapp.com",
-        projectId: "mathrpg-670c3",
-        storageBucket: "mathrpg-670c3.firebasestorage.app",
-        messagingSenderId: "618643401567",
-        appId: "1:618643401567:web:fcabd1e5310815869de4ea"
+    // ⚠️ 개인 Firebase 설정
+    let myFirebaseConfig = {
+        apiKey: "AIzaSyCacxSyxofZEZk51sFakd-MtAh1THBwiVI".trim(),
+        authDomain: "mathrpg-670c3.firebaseapp.com".trim(),
+        projectId: "mathrpg-670c3".trim(),
+        storageBucket: "mathrpg-670c3.firebasestorage.app".trim(),
+        messagingSenderId: "618643401567".trim(),
+        appId: "1:618643401567:web:fcabd1e5310815869de4ea".trim()
     };
 
     // 무한 대기를 방지하는 5초 타임아웃 시스템 추가
@@ -615,7 +614,7 @@
     let db = null;
     let currentUser = null;
     let firestoreLib = null;
-    const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'mathrpg-670c3-default';
     
     async function initFirebase() {
         try {
@@ -623,28 +622,33 @@
             const firebaseAuth = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js");
             const firestore = await import("https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js");
             
-            // 환경 변수에서 동적으로 Firebase 설정을 불러옵니다.
-            const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
-            const app = firebaseApp.initializeApp(firebaseConfig);
-            const auth = firebaseAuth.getAuth(app);
+            let activeConfig = myFirebaseConfig;
+            
+            // AI 캔버스 내부 테스트 환경인 경우 캔버스 전용 설정을 우선 적용하여 API 키 충돌 방지
+            if (typeof __firebase_config !== 'undefined' && __firebase_config) {
+                try { activeConfig = JSON.parse(__firebase_config); } catch(e) {}
+            }
+
+            const app = firebaseApp.initializeApp(activeConfig);
             db = firestore.getFirestore(app);
             firestoreLib = firestore;
 
             try {
+                // 인증(Auth) 과정 분리 - 실패하더라도 데이터베이스(DB)는 작동하도록 우회 처리
+                const auth = firebaseAuth.getAuth(app);
                 if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
                     await firebaseAuth.signInWithCustomToken(auth, __initial_auth_token);
                 } else {
                     await firebaseAuth.signInAnonymously(auth);
                 }
+                firebaseAuth.onAuthStateChanged(auth, (user) => {
+                    currentUser = user;
+                });
             } catch (err) {
-                console.warn("Auth 인증 실패. 규칙(Rules)이 true라면 무시해도 됩니다.", err);
+                console.warn("✅ Auth 인증 실패 알림 (무시 가능): Firestore 규칙이 'if true'라면 게임 데이터는 정상 작동합니다.", err);
             }
-
-            firebaseAuth.onAuthStateChanged(auth, (user) => {
-                currentUser = user;
-            });
         } catch (e) {
-            console.error("Firebase Auth Error:", e);
+            console.error("Firebase 초기화 에러:", e);
         }
     }
     initFirebase();
