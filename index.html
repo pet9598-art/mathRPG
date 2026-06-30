@@ -400,6 +400,17 @@
 </div>
 
 <script>
+    // ⚠️ [중요] 개인 서버나 페이지에 배포할 경우 본인의 Firebase 설정을 여기에 입력하세요.
+    // Firebase Console -> 프로젝트 설정 -> 웹 앱 추가 후 나오는 config 값
+    const MY_FIREBASE_CONFIG = {
+        apiKey: "AIzaSyCacxSyxofZEZk51sFakd-MtAh1THBwiVI",
+        authDomain: "mathrpg-670c3.firebaseapp.com",
+        projectId: "mathrpg-670c3",
+        storageBucket: "mathrpg-670c3.firebasestorage.app",
+        messagingSenderId: "618643401567",
+        appId: "1:618643401567:web:fcabd1e5310815869de4ea"
+    };
+
     let player = {
         level: 1, exp: 0, maxExp: 100, hp: 100, maxHp: 100, mp: 50, maxMp: 50,
         baseAtk: 15, baseDef: 5, gold: 500, skills: [],
